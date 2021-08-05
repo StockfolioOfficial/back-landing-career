@@ -1,15 +1,58 @@
 import json, bcrypt
 
-from django.http  import JsonResponse
-
+from django.http          import JsonResponse
+from drf_yasg             import openapi
+from drf_yasg.utils       import swagger_auto_schema
 from rest_framework.views import APIView
 
-from drf_yasg.utils import swagger_auto_schema
-from drf_yasg       import openapi
-
 from core.decorators   import login_required
-from users.validation  import validate_password
-from users.serializers import MyPageGetSerializer, MyPagePatchBodySerializer
+from my_settings       import SECRET_KEY, ALGORITHM
+from users.models      import User
+from users.validation  import validate_email, validate_password
+from users.serializers import SignupBodySerializer, MyPageGetSerializer, MyPagePatchBodySerializer
+
+class SignupView(APIView):
+    @swagger_auto_schema (
+        request_body = SignupBodySerializer, 
+        responses = {
+            "201": "SUCCESS",
+            "400": "BAD_REQUEST" 
+        },
+        operation_id = "회원가입",
+        operation_description = "이메일(abc@def.com 등의 이메일 형식), 패스워드(영문, 숫자, 특수기호) validation이 적용되어 있습니다."
+    )
+    
+    def post(self, request):
+        try: 
+            data = json.loads(request.body)
+
+            if not validate_email(data['email']):
+                return JsonResponse({'message': 'INVALID_EMAIL_FORMAT'}, status=400)
+
+            if User.objects.filter(email=data['email']).exists():
+                return JsonResponse({'message': 'ALREADY_EXISTED_EMAIL'}, status=400)           
+            
+            if not validate_password(data['password']):
+                return JsonResponse({'message': 'INVALID_PASSWORD_FORMAT'}, status=400)
+            
+            password       = data['password']
+            password_check = data['password_check'] 
+            
+            if password != password_check:
+                return JsonResponse({'message': 'BAD_REQUEST'}, status=400) 
+
+            encoded_password = data['password'].encode('utf-8')
+            hashed_password  = bcrypt.hashpw(encoded_password, bcrypt.gensalt())
+            
+            User.objects.create(
+                email    = data['email'],
+                password = hashed_password.decode('utf-8')
+            )
+
+            return JsonResponse({'message': 'SUCCESS'}, status=201)
+
+        except KeyError:
+            return JsonResponse({'message': 'KEY_ERROR'}, status=400)
 
 class UserMyPageView(APIView):
     parameter_token = openapi.Parameter (
