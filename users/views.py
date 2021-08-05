@@ -27,7 +27,9 @@ class UserMyPageView(APIView):
             "200": mypage_get_response,
             "400": "BAD_REQUEST",
             "401": "INVALID_TOKEN"
-        },        
+        },
+        operation_id = "회원정보 조회",
+        operation_description = "header에 토큰이 필요합니다."
     )
     @login_required
     def get(self, request):    
@@ -49,6 +51,8 @@ class UserMyPageView(APIView):
             "400": "BAD_REQUEST",
             "401": "INVALID_TOKEN"
         },
+        operation_id = "회원정보 수정",
+        operation_description = "header에 토큰, body에 수정 값이 필요합니다."
     )
     @login_required
     def patch(self, request):
