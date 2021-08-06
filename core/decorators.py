@@ -27,8 +27,4 @@ def login_required(func):
         except KeyError:
             return JsonResponse({'message': 'KEY_ERROR'}, status=400)
 
-<<<<<<< HEAD
     return wrapper
-=======
-    return wrapper
->>>>>>> edbd58c ( - #10 Add(Signin): 로그인 EndPoint, API 구현)
