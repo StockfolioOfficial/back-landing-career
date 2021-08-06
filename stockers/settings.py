@@ -44,6 +44,10 @@ INSTALLED_APPS = [
     'applications',
     'drf_yasg',
     'rest_framework',
+<<<<<<< HEAD
+=======
+    'django_extensions',
+>>>>>>> edbd58c ( - #10 Add(Signin): 로그인 EndPoint, API 구현)
 ]
 
 MIDDLEWARE = [
