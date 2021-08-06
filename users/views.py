@@ -99,7 +99,7 @@ class UserMyPageView(APIView):
                                         type        = openapi.TYPE_STRING
     )
 
-    mypage_get_response = openapi.Response("SUCCESS", MyPageGetSerializer)
+    mypage_get_response = openapi.Response("result", MyPageGetSerializer)
 
     @swagger_auto_schema (
         manual_parameters = [parameter_token],
