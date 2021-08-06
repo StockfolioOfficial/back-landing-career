@@ -7,6 +7,10 @@ class SignupBodySerializer(serializers.Serializer):
     password       = serializers.CharField()
     password_check = serializers.CharField()
 
+class SigninBodySerializer(serializers.Serializer):
+    email    = serializers.EmailField()
+    password = serializers.CharField()
+
 class MyPageGetSerializer(serializers.ModelSerializer):
     class Meta:
         model  = User
