@@ -1,6 +1,6 @@
 import json, bcrypt, jwt
 
-from django.http          import JsonResponse, response
+from django.http          import JsonResponse
 from drf_yasg             import openapi
 from drf_yasg.utils       import swagger_auto_schema
 from rest_framework.views import APIView

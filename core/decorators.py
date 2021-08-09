@@ -1,10 +1,9 @@
 import jwt
 
-from django.http import JsonResponse
+from django.http  import JsonResponse
 
 from users.models import User
-
-from my_settings import SECRET_KEY, ALGORITHM
+from my_settings  import SECRET_KEY, ALGORITHM
 
 def login_required(func):
     def wrapper(self, request, *args, **kwargs):
@@ -27,8 +26,4 @@ def login_required(func):
         except KeyError:
             return JsonResponse({'message': 'KEY_ERROR'}, status=400)
 
-<<<<<<< HEAD
     return wrapper
-=======
-    return wrapper
->>>>>>> edbd58c ( - #10 Add(Signin): 로그인 EndPoint, API 구현)
