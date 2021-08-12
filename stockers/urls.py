@@ -21,6 +21,7 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path('users', include('users.urls')),
+    path('recruits', include('recruits.urls')),
 ]
 
 if settings.DEBUG:
