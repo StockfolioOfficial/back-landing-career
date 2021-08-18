@@ -17,7 +17,6 @@ class Recruit(TimeStampModel):
     deadline       = models.DateField(null=False, default='9999-12-31')
     minimum_salary = models.DecimalField(max_digits=13, decimal_places=2, null=False, default=0)
     maximum_salary = models.DecimalField(max_digits=13, decimal_places=2, null=False, default=0)
-
     
     class Meta:
         db_table = 'recruits'
