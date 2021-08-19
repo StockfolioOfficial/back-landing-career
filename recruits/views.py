@@ -126,7 +126,6 @@ class RecruitListView(APIView):
             return JsonResponse({"message": "KEY_ERROR"}, status=400)
         except TypeError:
             return JsonResponse({"message": "TYPE_ERROR"}, status=400)
-        
 
 class RecruitView(APIView):
     parameter_token = openapi.Parameter (
