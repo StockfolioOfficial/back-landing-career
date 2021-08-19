@@ -5,6 +5,11 @@ from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg       import openapi
 
+urlpatterns = [
+    path('users', include('users.urls')),
+    path('recruits', include('recruits.urls')),
+]
+
 schema_view = get_schema_view( 
     openapi.Info( 
         title            = "Stockers API", 
@@ -18,10 +23,6 @@ schema_view = get_schema_view(
     public             = True, 
     permission_classes = (permissions.AllowAny,), 
 )
-
-urlpatterns = [
-    path('users', include('users.urls')),
-]
 
 if settings.DEBUG:
     urlpatterns += [
