@@ -52,7 +52,7 @@ class SignupView(APIView):
                 password = hashed_password.decode('utf-8')
             )
 
-            access_token = jwt.encode({'user_id': user.id}, SECRET_KEY, ALGORITHM)
+            access_token = jwt.encode({'user_id': user.id, 'role': user.role}, SECRET_KEY, ALGORITHM)
 
             return JsonResponse({'message': 'SUCCESS', 'access_token': access_token}, status=201)
 
@@ -208,7 +208,7 @@ class UserMyPageView(APIView):
                                         type        = openapi.TYPE_STRING
     )
 
-    mypage_get_response = openapi.Response("SUCCESS", MyPageGetSerializer)
+    mypage_get_response = openapi.Response("result", MyPageGetSerializer)
 
     @swagger_auto_schema (
         manual_parameters = [parameter_token],
