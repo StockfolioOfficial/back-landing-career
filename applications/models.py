@@ -1,6 +1,6 @@
 from django.db import models
 
-from core.models import TimeStampModel, SoftDeleteModel
+from core.models import TimeStampModel
 
 class Application(TimeStampModel):
     STATUS_CHOICES  = (
