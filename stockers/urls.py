@@ -7,6 +7,7 @@ from drf_yasg       import openapi
 
 urlpatterns = [
     path('users', include('users.urls')),
+    path('applications', include('applications.urls')),
     path('recruits', include('recruits.urls')),
 ]
 
