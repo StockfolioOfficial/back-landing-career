@@ -9,12 +9,14 @@ class Recruit(TimeStampModel):
         ('NC', '신입/경력'),
     )
 
-    position     = models.CharField(max_length=50, null=False)
-    description  = models.TextField()
-    stacks       = models.ManyToManyField('Stack', through='RecruitStack', related_name='recruits')
-    applications = models.ManyToManyField('applications.Application', through='RecruitApplication', related_name='recruits')
-    type         = models.CharField(max_length=3, choices=TYPE_CHOICES, default='NC')
-    deadline     = models.DateField(null=True, blank=True)
+    position       = models.CharField(max_length=50, null=False)
+    description    = models.TextField()
+    stacks         = models.ManyToManyField('Stack', through='RecruitStack', related_name='recruits')
+    applications   = models.ManyToManyField('applications.Application', through='RecruitApplication', related_name='recruits')
+    type           = models.CharField(max_length=3, choices=TYPE_CHOICES, default='NC')
+    deadline       = models.DateField(null=False, default='9999-12-31')
+    minimum_salary = models.DecimalField(max_digits=13, decimal_places=2, null=False, default=0)
+    maximum_salary = models.DecimalField(max_digits=13, decimal_places=2, null=False, default=0)
     
     class Meta:
         db_table = 'recruits'
