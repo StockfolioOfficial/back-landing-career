@@ -175,14 +175,14 @@ class ApplicationAdminView(APIView):
 
     @admin_only
     def get(self, request):
-        type     = request.GET.get('type', None)
-        position = request.GET.get('position', None)
-        status   = request.GET.get('status', None)
+        career_type = request.GET.get('career_type', None)
+        position    = request.GET.get('position', None)
+        status      = request.GET.get('status', None)
 
         q = Q()
 
         if type:
-            q.add(Q(recruits__type = type), q.AND)
+            q.add(Q(recruits__career_type = career_type), q.AND)
         
         if position:
             q.add(Q(recruits__position = position), q.AND)
@@ -194,14 +194,17 @@ class ApplicationAdminView(APIView):
 
         results = [
             {
-                'content'   : application.content,
-                'status'    : application.status,
-                'created_at': application.created_at,
-                'updated_at': application.updated_at,
-                'recruit_id': [recruit.id for recruit in application.recruits.all()],
-                'type'      : [recruits.type for recruits in application.recruits.all()],
-                'position'  : [recruits.position for recruits in application.recruits.all()],
-                'deadline'  : [recruits.deadline for recruits in application.recruits.all()]
+                'content'     : application.content,
+                'status'      : application.status,
+                'created_at'  : application.created_at,
+                'updated_at'  : application.updated_at,
+                'recruit_id'  : [recruits.id for recruits in application.recruits.all()],
+                'job_openings': [recruits.job_openings for recruits in application.recruits.all()],
+                'author'      : [recruits.author for recruits in application.recruits.all()],
+                'work_type'   : [recruits.work_type for recruits in application.recruits.all()],
+                'career_type' : [recruits.career_type for recruits in application.recruits.all()],
+                'position'    : [recruits.position for recruits in application.recruits.all()],
+                'deadline'    : [recruits.deadline for recruits in application.recruits.all()]
             }
         for application in applications]
 
@@ -243,7 +246,10 @@ class ApplicationAdminDetailView(APIView):
                 'user_id'   : application.user.id,
                 'user_email': application.user.email,
                 'recruit_id': [recruits.id for recruits in application.recruits.all()],
-                'type'      : [recruits.type for recruits in application.recruits.all()],
+                'job_openings': [recruits.job_openings for recruits in application.recruits.all()],
+                'author'      : [recruits.author for recruits in application.recruits.all()],
+                'work_type'   : [recruits.work_type for recruits in application.recruits.all()],
+                'career_type' : [recruits.career_type for recruits in application.recruits.all()],
                 'position'  : [recruits.position for recruits in application.recruits.all()],
                 'deadline'  : [recruits.deadline for recruits in application.recruits.all()]
             }

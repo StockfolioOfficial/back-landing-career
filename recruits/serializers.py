@@ -7,13 +7,15 @@ class RecruitSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Recruit
         fields = ['position', 'description', 'created_at', 'updated_at', 
-                  'stacks', 'type', 'deadline', 'minimum_salary', 'maximum_salary']
+                  'stacks', 'career_type', 'work_type', 'author', 'job_openings','deadline', 'minimum_salary', 'maximum_salary']
 
 class RecruitCreateBodySerializer(serializers.Serializer):
     position       = serializers.CharField()
     description    = serializers.CharField()
     stacks         = serializers.ListField()
-    type           = serializers.ChoiceField(choices=("신입", "경력", "신입/경력"), default="신입/경력")
+    job_openings   = serializers.CharField()
+    work_type      = serializers.CharField()
+    career_type    = serializers.ChoiceField(choices=("신입", "경력", "신입/경력"), default="신입/경력")
     deadline       = serializers.DateField(default="9999-12-31")
     minimum_salary = serializers.DecimalField(max_digits=13, decimal_places=2, default=0)
     maximum_salary = serializers.DecimalField(max_digits=13, decimal_places=2, default=0)
