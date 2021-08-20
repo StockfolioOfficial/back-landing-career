@@ -1,3 +1,4 @@
+import boto3
 import json
 
 from django.db.models     import Q
@@ -7,7 +8,7 @@ from drf_yasg.utils       import swagger_auto_schema
 from rest_framework.views import APIView
 
 from core.decorators          import login_required, admin_only
-from my_settings              import ADMIN_TOKEN
+from my_settings              import ADMIN_TOKEN, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
 from recruits.models          import Recruit
 from applications.models      import Application
 from applications.serializers import ApplicationSerializer, ApplicationAdminSerializer, ApplicationAdminPatchSerializer
@@ -81,6 +82,12 @@ class ApplicationView(APIView):
                 user    = user,
             )
             application.recruits.add(recruit)
+
+            s3_client = boto3.client(
+                's3',
+                aws_access_key_id     = AWS_ACCESS_KEY_ID,
+                aws_secret_access_key = AWS_SECRET_ACCESS_KEY
+            )
             
             return JsonResponse({"message": "SUCCESS"}, status=201)
 
