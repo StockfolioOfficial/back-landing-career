@@ -34,6 +34,8 @@ def admin_only(func):
             access_token = request.headers.get('Authorization')
             pay_load     = jwt.decode(access_token, SECRET_KEY, algorithms=[ALGORITHM])
             role         = pay_load['role']
+            user         = User.objects.get(id=pay_load['user_id'])
+            request.user = user
             
             if not role == 'admin':
                 return JsonResponse({'message': 'UNAUTHORIZED'}, status=401)

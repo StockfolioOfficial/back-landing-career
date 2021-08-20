@@ -54,7 +54,10 @@ class RecruitListView(APIView):
             {
                 "id"             : recruit.id,
                 "position"       : recruit.position,
-                "type"           : recruit.get_type_display(),
+                "work_type"      : recruit.work_type,
+                "career_type"    : recruit.get_career_type_display(),
+                "author"         : recruit.author,
+                "job_openings"   : recruit.job_openings,
                 "description"    : recruit.description,
                 "minimum_salary" : recruit.minimum_salary,
                 "maximum_salary" : recruit.maximum_salary,
@@ -76,12 +79,12 @@ class RecruitListView(APIView):
             "401": "UNAUTHORIZED"
         },
         operation_id = "채용공고 생성",
-        operation_description = "포지션, 설명, 기술스택, 타입(신입or경력or신입/경력), 모집마감일, 최소/최대 연봉을 body에 담아 보내주세요."
+        operation_description = "포지션, 설명, 기술스택, 근무타입(정규직/계약직), 경력타입(신입or경력or신입/경력), 채용인원, 모집마감일, 최소/최대 연봉을 body에 담아 보내주세요."
     )
     @admin_only
     def post(self, request):
         try:
-            type_choices = {
+            career_type_choices = {
                 "신입": "N",
                 "경력": "C",
                 "신입/경력": "NC",
@@ -91,12 +94,16 @@ class RecruitListView(APIView):
             position       = data["position"]
             description    = data["description"]
             stack_names    = data["stacks"]
-            type           = data["type"] if data["type"] else "신입/경력"
+            job_openings   = data["job_openings"]
+            work_type      = data["work_type"]
+            career_type    = data["career_type"] if data["career_type"] else "신입/경력"
             deadline       = data["deadline"]
             minimum_salary = data["minimum_salary"]
             maximum_salary = data["maximum_salary"]
 
-            if not (type in type_choices):
+            author = request.user.email
+
+            if not (career_type in career_type_choices):
                 return JsonResponse({"message": "BAD_REQUEST"}, status=400)
 
             stacks = []
@@ -113,7 +120,10 @@ class RecruitListView(APIView):
             recruit = Recruit.objects.create(
                 position       = position,
                 description    = description,
-                type           = type_choices[type],
+                work_type      = work_type,
+                career_type    = career_type_choices[career_type],
+                job_openings   = job_openings,
+                author         = author,
                 deadline       = deadline if deadline else "9999-12-31",
                 minimum_salary = minimum_salary if minimum_salary else 0,
                 maximum_salary = maximum_salary if maximum_salary else 0
@@ -153,7 +163,10 @@ class RecruitView(APIView):
             result = {
                 "id"             : recruit.id,
                 "position"       : recruit.position,
-                "type"           : recruit.get_type_display(),
+                "work_type"      : recruit.work_type,
+                "career_type"    : recruit.get_career_type_display(),
+                "author"         : recruit.author,
+                "job_openings"   : recruit.job_openings,
                 "description"    : recruit.description,
                 "minimum_salary" : recruit.minimum_salary,
                 "maximum_salary" : recruit.maximum_salary,
@@ -178,14 +191,14 @@ class RecruitView(APIView):
             "404": "NOT_FOUND"
         },
         operation_id = "채용공고 수정",
-        operation_description = "포지션, 설명, 기술스택, 타입(신입or경력or신입/경력), 모집마감일, 최소/최대 연봉을 body에 담아 보내주세요."
+        operation_description = "포지션, 설명, 기술스택, 근무타입(정규직/계약직), 경력타입(신입or경력or신입/경력), 채용인원, 모집마감일, 최소/최대 연봉을 body에 담아 보내주세요."
     )
     @admin_only
     def patch(self, request, recruit_id):
         try:
             recruit = Recruit.objects.get(id=recruit_id)
 
-            type_choices = {
+            career_type_choices = {
                 "신입": "N",
                 "경력": "C",
                 "신입/경력": "NC",
@@ -195,12 +208,16 @@ class RecruitView(APIView):
             position       = data["position"]
             description    = data["description"]
             stack_names    = data["stacks"]
-            type           = data["type"] if data["type"] else "신입/경력"
+            work_type      = data["work_type"]
+            career_type    = data["career_type"] if data["career_type"] else "신입/경력"
+            job_openings   = data["job_openings"]
             deadline       = data["deadline"]
             minimum_salary = data["minimum_salary"]
             maximum_salary = data["maximum_salary"]
 
-            if not (type in type_choices):
+            author = request.user.email
+
+            if not (career_type in career_type_choices):
                 return JsonResponse({"message": "BAD_REQUEST"}, status=400)
 
             stacks_to_add = []
@@ -215,7 +232,10 @@ class RecruitView(APIView):
 
             recruit.position       = position
             recruit.description    = description
-            recruit.type           = type_choices[type]
+            recruit.work_type      = work_type
+            recruit.career_type    = career_type_choices[career_type]
+            recruit.job_openings   = job_openings
+            recruit.author         = author
             recruit.deadline       = deadline if deadline else "9999-12-31"
             recruit.minimum_salary = minimum_salary if minimum_salary else 0
             recruit.maximum_salary = maximum_salary if maximum_salary else 0
