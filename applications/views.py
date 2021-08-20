@@ -67,6 +67,9 @@ class ApplicationView(APIView):
         try:
             user    = request.user
             recruit = Recruit.objects.get(id=recruit_id)
+
+            if recruit.applications.filter(user=user).exists():
+                return JsonResponse({"message": "ALREADY_EXISTS"}, status=400)
             
             data    = json.loads(request.body)
             content = data["content"]
