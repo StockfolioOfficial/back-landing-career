@@ -239,7 +239,7 @@ class ApplicationAdminDetailView(APIView):
                 'updated_at': application.updated_at,
                 'user_id'   : application.user.id,
                 'user_email': application.user.email,
-                'recruit_id': [recruit.id for recruit in application.recruits.all()],
+                'recruit_id': [recruits.id for recruits in application.recruits.all()],
                 'type'      : [recruits.type for recruits in application.recruits.all()],
                 'position'  : [recruits.position for recruits in application.recruits.all()],
                 'deadline'  : [recruits.deadline for recruits in application.recruits.all()]
