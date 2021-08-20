@@ -88,13 +88,13 @@ class RecruitListView(APIView):
             }
 
             data           = json.loads(request.body)
-            position       = data.get("position")
-            description    = data.get("description")
-            stack_names    = data.get("stacks")
-            type           = data.get("type") if data["type"] else "신입/경력"
-            deadline       = data.get("deadline")
-            minimum_salary = data.get("minimum_salary")
-            maximum_salary = data.get("maximum_salary")
+            position       = data["position"]
+            description    = data["description"]
+            stack_names    = data["stacks"]
+            type           = data["type"] if data["type"] else "신입/경력"
+            deadline       = data["deadline"]
+            minimum_salary = data["minimum_salary"]
+            maximum_salary = data["maximum_salary"]
 
             if not (type in type_choices):
                 return JsonResponse({"message": "BAD_REQUEST"}, status=400)
@@ -192,13 +192,13 @@ class RecruitView(APIView):
             }
 
             data           = json.loads(request.body)
-            position       = data.get("position")
-            description    = data.get("description")
-            stack_names    = data.get("stacks")
-            type           = data.get("type") if data["type"] else "신입/경력"
-            deadline       = data.get("deadline")
-            minimum_salary = data.get("minimum_salary")
-            maximum_salary = data.get("maximum_salary")
+            position       = data["position"]
+            description    = data["description"]
+            stack_names    = data["stacks"]
+            type           = data["type"] if data["type"] else "신입/경력"
+            deadline       = data["deadline"]
+            minimum_salary = data["minimum_salary"]
+            maximum_salary = data["maximum_salary"]
 
             if not (type in type_choices):
                 return JsonResponse({"message": "BAD_REQUEST"}, status=400)

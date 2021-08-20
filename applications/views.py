@@ -271,7 +271,5 @@ class ApplicationAdminDetailView(APIView):
             
             return JsonResponse({'message': 'SUCCESS'}, status=200)
 
-        except KeyError:
-            return JsonResponse({'message': 'KEY_ERROR'}, status=400)
         except Application.DoesNotExist:
             return JsonResponse({'message': 'NOT_FOUND'}, status=404)

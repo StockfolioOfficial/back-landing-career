@@ -70,40 +70,33 @@ class SigninView(APIView):
         operation_description = "이메일과 비밀번호 입력이 필요합니다."
     )
     def post(self, request):
-        try:
-            data     = json.loads(request.body)
-            email    = data['email']
-            password = data['password']
+        data     = json.loads(request.body)
+        email    = data['email']
+        password = data['password']
 
-            if not validate_email(email):
-                return JsonResponse({'message': 'BAD_REQUEST'}, status=400)           
+        if not (validate_email(email) and validate_password(password)):
+            return JsonResponse({'message': 'BAD_REQUEST'}, status=400)          
 
-            user, is_created = User.objects.get_or_create(email= email)
+        user, is_created = User.objects.get_or_create(email= email)
 
-            if is_created:
-                if not validate_password(password):
-                    return JsonResponse({'message': 'BAD_REQUEST'}, status=400)
+        if is_created:
+            hashed_password  = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+            user.password    = hashed_password.decode('utf-8')
+            user.save()
 
-                hashed_password  = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-                user.password    = hashed_password.decode('utf-8')
-                user.save()
+            access_token = jwt.encode({'user_id': user.id, 'role': user.role}, SECRET_KEY, ALGORITHM)
 
-                access_token = jwt.encode({'user_id': user.id, 'role': user.role}, SECRET_KEY, ALGORITHM)
+            return JsonResponse({'access_token': access_token}, status=200)
+        
+        encoded_password = password.encode('utf-8')
+        hashed_password  = user.password.encode('utf-8')
 
-                return JsonResponse({'access_token': access_token}, status=200)
-            
-            encoded_password = password.encode('utf-8')
-            hashed_password  = user.password.encode('utf-8')
+        if bcrypt.checkpw(encoded_password, hashed_password):
+            access_token = jwt.encode({'user_id': user.id, 'role': user.role}, SECRET_KEY, ALGORITHM)
 
-            if bcrypt.checkpw(encoded_password, hashed_password):
-                access_token = jwt.encode({'user_id': user.id, 'role': user.role}, SECRET_KEY, ALGORITHM)
+            return JsonResponse({'access_token': access_token}, status=200)
 
-                return JsonResponse({'access_token': access_token}, status=200)
-
-            return JsonResponse({'message': 'INVALID_PASSWORD'}, status=400)            
-
-        except KeyError:
-            return JsonResponse({'message': 'KEY_ERROR'}, status=400)
+        return JsonResponse({'message': 'INVALID_PASSWORD'}, status=400)            
 
 class VerificationView(APIView):
     verification_response = openapi.Response("SUCCESS", VerificationResponseSerializer)
