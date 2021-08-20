@@ -35,7 +35,6 @@ class RecruitListView(APIView):
                                 "sort    : deadline-ascend, salary-descend\n" +
                                 "DEFAULT : 모든 포지션, 최신순"
     )
-
     def get(self, request):
         position = request.GET.get("position", "")
         sort     = request.GET.get("sort", "created-descend")
@@ -79,7 +78,6 @@ class RecruitListView(APIView):
         operation_id = "채용공고 생성",
         operation_description = "포지션, 설명, 기술스택, 타입(신입or경력or신입/경력), 모집마감일, 최소/최대 연봉을 body에 담아 보내주세요."
     )
-
     @admin_only
     def post(self, request):
         try:
@@ -90,13 +88,13 @@ class RecruitListView(APIView):
             }
 
             data           = json.loads(request.body)
-            position       = data.get("position")
-            description    = data.get("description")
-            stack_names    = data.get("stacks")
-            type           = data.get("type") if data["type"] else "신입/경력"
-            deadline       = data.get("deadline")
-            minimum_salary = data.get("minimum_salary")
-            maximum_salary = data.get("maximum_salary")
+            position       = data["position"]
+            description    = data["description"]
+            stack_names    = data["stacks"]
+            type           = data["type"] if data["type"] else "신입/경력"
+            deadline       = data["deadline"]
+            minimum_salary = data["minimum_salary"]
+            maximum_salary = data["maximum_salary"]
 
             if not (type in type_choices):
                 return JsonResponse({"message": "BAD_REQUEST"}, status=400)
@@ -148,7 +146,6 @@ class RecruitView(APIView):
         operation_id = "채용공고 상세 조회",
         operation_description = "특정 채용공고 정보를 조회합니다."
     )
-
     def get(self, request, recruit_id):
         try:
             recruit = Recruit.objects.prefetch_related('stacks').get(id=recruit_id)
@@ -195,13 +192,13 @@ class RecruitView(APIView):
             }
 
             data           = json.loads(request.body)
-            position       = data.get("position")
-            description    = data.get("description")
-            stack_names    = data.get("stacks")
-            type           = data.get("type") if data["type"] else "신입/경력"
-            deadline       = data.get("deadline")
-            minimum_salary = data.get("minimum_salary")
-            maximum_salary = data.get("maximum_salary")
+            position       = data["position"]
+            description    = data["description"]
+            stack_names    = data["stacks"]
+            type           = data["type"] if data["type"] else "신입/경력"
+            deadline       = data["deadline"]
+            minimum_salary = data["minimum_salary"]
+            maximum_salary = data["maximum_salary"]
 
             if not (type in type_choices):
                 return JsonResponse({"message": "BAD_REQUEST"}, status=400)
@@ -252,7 +249,6 @@ class RecruitView(APIView):
         operation_id = "채용공고 삭제",
         operation_description = "특정 채용공고를 삭제합니다."
     )
-
     @admin_only
     def delete(self, request, recruit_id):
         try: 

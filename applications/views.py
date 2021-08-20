@@ -61,7 +61,7 @@ class ApplicationView(APIView):
         operation_id = "해당 공고에 대한 지원서 생성",
         operation_description = "header에 토큰이, body에 json형식 데이터가 필요합니다."
     )
-
+    
     @login_required
     def post(self, request, recruit_id):
         try:
@@ -98,7 +98,7 @@ class ApplicationView(APIView):
         operation_id = "해당 공고에 대한 지원서 수정",
         operation_description = "header에 토큰이, body에 json형식 데이터가 필요합니다."
     )
-
+    
     @login_required
     def patch(self, request, recruit_id):
         try:
@@ -131,7 +131,7 @@ class ApplicationView(APIView):
         operation_id = "해당 공고에 대한 지원서 삭제",
         operation_description = "header에 토큰이 필요합니다"
     )
-
+    
     @login_required
     def delete(self, request, recruit_id):
         try:
@@ -271,7 +271,5 @@ class ApplicationAdminDetailView(APIView):
             
             return JsonResponse({'message': 'SUCCESS'}, status=200)
 
-        except KeyError:
-            return JsonResponse({'message': 'KEY_ERROR'}, status=400)
         except Application.DoesNotExist:
             return JsonResponse({'message': 'NOT_FOUND'}, status=404)
