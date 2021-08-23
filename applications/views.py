@@ -8,7 +8,7 @@ from drf_yasg.utils       import swagger_auto_schema
 from rest_framework.views import APIView
 
 from core.decorators          import login_required, admin_only
-from my_settings              import ADMIN_TOKEN, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+from global_variable          import ADMIN_TOKEN
 from recruits.models          import Recruit
 from applications.models      import Application
 from applications.serializers import ApplicationSerializer, ApplicationAdminSerializer, ApplicationAdminPatchSerializer
@@ -188,7 +188,7 @@ class ApplicationAdminView(APIView):
 
         q = Q()
 
-        if type:
+        if career_type:
             q.add(Q(recruits__career_type = career_type), q.AND)
         
         if position:

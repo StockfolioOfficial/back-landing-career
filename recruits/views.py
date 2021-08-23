@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg       import openapi
 
-from my_settings     import ADMIN_TOKEN
+from global_variable import ADMIN_TOKEN
 from recruits.models import Recruit, Stack, RecruitStack
 from core.decorators import admin_only
 from recruits.serializers import RecruitSerializer, RecruitQuerySerializer, RecruitCreateBodySerializer

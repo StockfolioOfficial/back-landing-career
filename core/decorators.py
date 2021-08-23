@@ -2,8 +2,8 @@ import jwt
 
 from django.http  import JsonResponse
 
-from users.models import User
-from my_settings  import SECRET_KEY, ALGORITHM
+from users.models       import User
+from global_variable    import SECRET_KEY, ALGORITHM
 
 def login_required(func):
     def wrapper(self, request, *args, **kwargs):
