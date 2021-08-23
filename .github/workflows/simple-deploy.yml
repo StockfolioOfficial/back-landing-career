@@ -69,13 +69,14 @@ jobs:
           export AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION
           export AWS_REGION=$AWS_DEFAULT_REGION
           export CONTAINER_NAME=$IMAGE_NAME-container
+          export APP_PORT=${{ secrets.DST_PORT }}
           env
           eval $(aws ecr get-login-password)
           docker stop $CONTAINER_NAME 2>/dev/null
           docker rm $CONTAINER_NAME 2>/dev/null
           docker rmi $IMAGE_LATEST
           docker pull $IMAGE_LATEST
-          docker run -d -p ${{ secrets.DST_PORT }}:8000 \ 
+          docker run -d -p $((APP_PORT - 0)):8000 \ 
             -e IS_PRODUCTION=True \ 
             -e JWT_ALG=${{ secrets.JWT_ALG }} \
             -e JWT_SECRET=${{ secrets.JWT_SECRET }} \ 
