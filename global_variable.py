@@ -1,6 +1,6 @@
 import os
 
-IS_DEBUG = os.environ["IS_DEBUG"] in ["True", "true"]
+IS_DEBUG = os.getenv("IS_PRODUCTION", "False") not in ["True", "true"]
 
 if IS_DEBUG:
     import my_settings as settings
