@@ -1,0 +1,21 @@
+import os
+
+IS_DEBUG = os.environ["IS_DEBUG"] in ["True", "true"]
+
+if IS_DEBUG:
+    import my_settings as settings
+else:
+    import live_settings as settings
+
+
+DATABASES = settings.DATABASES
+
+SECRET_KEY = settings.SECRET_KEY
+
+ALGORITHM = settings.ALGORITHM
+
+ADMIN_TOKEN = settings.ADMIN_TOKEN
+
+SENDGRID_API_KEY = settings.SENDGRID_API_KEY
+
+EMAIL_DOMAIN = settings.EMAIL_DOMAIN

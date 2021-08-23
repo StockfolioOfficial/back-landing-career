@@ -9,7 +9,7 @@ from rest_framework.views import APIView
 from sendgrid.helpers.mail import *
 
 from core.decorators   import login_required
-from my_settings       import SECRET_KEY, ALGORITHM, SENDGRID_API_KEY, EMAIL_DOMAIN
+from global_variable   import SECRET_KEY, ALGORITHM, SENDGRID_API_KEY, EMAIL_DOMAIN
 from users.models      import User, UserTemp
 from users.validation  import validate_email, validate_password
 from users.serializers import SigninBodySerializer, SignupBodySerializer, MyPageGetSerializer, MyPagePatchBodySerializer, VerificationSerializer, VerificationResponseSerializer, ChangePasswordSerializer
