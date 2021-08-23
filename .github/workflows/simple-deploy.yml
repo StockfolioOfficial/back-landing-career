@@ -39,7 +39,13 @@ jobs:
         export LOWERCASE=${ECR_REPOSITORY,,}
         docker build -t $ECR_REGISTRY/$LOWERCASE:$IMAGE_TAG .
         docker push $ECR_REGISTRY/$LOWERCASE:$IMAGE_TAG
-        echo "::set-output name=image::$ECR_REGISTRY/$LOWERCASE:$IMAGE_TAG"
+        
+        docker tag $ECR_REGISTRY/$LOWERCASE:$IMAGE_TAG $ECR_REGISTRY/$LOWERCASE:latest
+        docker push $ECR_REGISTRY/$LOWERCASE:latest
+        
+        echo "::set-output name=image_target::$ECR_REGISTRY/$LOWERCASE:$IMAGE_TAG"
+        echo "::set-output name=image_latest::$ECR_REGISTRY/$LOWERCASE:$IMAGE_TAG"
+        echo "::set-output name=image_name::$ECR_REGISTRY/$LOWERCASE:$IMAGE_TAG"
         
     - name: Pull Image, Run Container
       uses: appleboy/ssh-action@v0.1.4
@@ -47,18 +53,36 @@ jobs:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         AWS_DEFAULT_REGION: ap-northeast-2
-        TARGET_IMAGE: ${{ steps.build-image.outputs.image }}
+        
+        IMAGE_TARGET: ${{ steps.build-image.outputs.image_target }}
+        IMAGE_LATEST: ${{ steps.build-image.outputs.image_latest }}
+        IMAGE_NAME: ${{ steps.build-image.outputs.image_name }}
       with:
         host: ${{ secrets.SSH_HOST }}
         port: ${{ secrets.SSH_PORT }}
         username: ${{ secrets.SSH_USERNAME }}
         key: ${{ secrets.SSH_KEY }}
-        envs: AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_DEFAULT_REGION,TARGET_IMAGE
+        envs: AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_DEFAULT_REGION,IMAGE_TARGET,IMAGE_NAME,IMAGE_LATEST
         script: |
           export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
           export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
           export AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION
           export AWS_REGION=$AWS_DEFAULT_REGION
+          export CONTAINER_NAME=$IMAGE_NAME-container
           env
           eval $(aws ecr get-login-password)
-          docker pull $TARGET_IMAGE
+          docker stop $CONTAINER_NAME 2>/dev/null
+          docker rm $CONTAINER_NAME 2>/dev/null
+          docker rmi $IMAGE_LATEST
+          docker pull $IMAGE_LATEST
+          docker run -d -p ${{ secrets.DST_PORT }}:8000 \ 
+            -e IS_PRODUCTION=True \ 
+            -e JWT_ALG=${{ secrets.JWT_ALG }} \
+            -e JWT_SECRET=${{ secrets.JWT_SECRET }} \ 
+            -e DB_NAME=${{ secrets.DB_NAME }} \ 
+            -e DB_USER=${{ secrets.DB_USER }} \ 
+            -e DB_PASS=${{ secrets.DB_PASS }} \ 
+            -e DB_HOST=${{ secrets.DB_HOST }} \ 
+            -e DB_PORT=${{ secrets.DB_PORT }} \ 
+            -e SG_API_KEY=${{ secrets.SG_API_KEY }} \ 
+            -e EMAIL_SENDER=${{ secrets.SG_SENDER_HOST }}
