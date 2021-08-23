@@ -87,7 +87,8 @@ jobs:
           docker rm $CONTAINER_NAME 2>/dev/null
           docker rmi $IMAGE_LATEST
           docker pull $IMAGE_LATEST
-          docker run -d -p $DST_POST:8000 \ 
+          docker run -d --name=$CONTAINER_NAME
+            -p $DST_POST:8000 \ 
             -e IS_PRODUCTION=True \ 
             -e JWT_ALG=$JWT_ALG \
             -e JWT_SECRET=$JWT_SECRET \ 
@@ -97,4 +98,5 @@ jobs:
             -e DB_HOST=$DB_HOST \ 
             -e DB_PORT=$DB_PORT \ 
             -e SG_API_KEY=$SG_API_KEY \ 
-            -e EMAIL_SENDER=$SG_SENDER_HOST
+            -e EMAIL_SENDER=$SG_SENDER_HOST \
+            $IMAGE_LATEST
