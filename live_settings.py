@@ -25,4 +25,8 @@ ADMIN_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9' \
 
 SENDGRID_API_KEY = os.environ['SG_API_KEY']
 
+<<<<<<< HEAD
 EMAIL_DOMAIN = os.environ['EMAIL_SENDER']
+=======
+EMAIL_DOMAIN = os.environ['EMAIL_SENDER']
+>>>>>>> 386b81d (Add)
