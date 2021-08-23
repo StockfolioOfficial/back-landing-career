@@ -89,7 +89,7 @@ jobs:
           docker rmi $IMAGE_LATEST
           docker pull $IMAGE_LATEST
           docker run -d --name=$CONTAINER_NAME
-            -p $DST_POST:8000 \ 
+            -p 1234:8000 \ 
             -e IS_PRODUCTION=True \ 
             -e JWT_ALG=$JWT_ALG \
             -e JWT_SECRET=$JWT_SECRET \ 
