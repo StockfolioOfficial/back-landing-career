@@ -70,9 +70,9 @@ class ApplicationView(APIView):
 
             if recruit.applications.filter(user=user).exists():
                 return JsonResponse({"message": "ALREADY_EXISTS"}, status=400)
-            
-            data    = json.loads(request.body)
-            content = data["content"]
+
+            portfolio = request.POST["portfolio"]
+            content   = request.POST["content"]
             status  = "ST1"
 
             application = Application.objects.create(
