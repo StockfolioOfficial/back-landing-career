@@ -100,3 +100,4 @@ jobs:
             -e SG_API_KEY=$SG_API_KEY \ 
             -e EMAIL_SENDER=$SG_SENDER_HOST \
             $IMAGE_LATEST
+
