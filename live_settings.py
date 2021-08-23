@@ -14,11 +14,14 @@ DATABASES = {
     }
 }
 
-SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
-
 ALGORITHM = os.environ['JWT_ALG']
 
-ADMIN_TOKEN = os.environ['JWT_SECRET']
+SECRET_KEY = os.environ["JWT_SECRET"]
+
+# dummy token
+ADMIN_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9' \
+              '.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ' \
+              '.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c '
 
 SENDGRID_API_KEY = os.environ['SG_API_KEY']
 
