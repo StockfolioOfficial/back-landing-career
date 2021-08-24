@@ -1,16 +1,20 @@
 from django.urls import path, re_path, include
 from django.conf import settings
 
+from django.conf.urls.static import static
+
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg       import openapi
+
+
 
 urlpatterns = [
     path('users', include('users.urls')),
     path('applications', include('applications.urls')),
     path('recruits', include('recruits.urls')),
     path('', include('helloworld.urls')),
-]
+] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 schema_view = get_schema_view( 
     openapi.Info( 
