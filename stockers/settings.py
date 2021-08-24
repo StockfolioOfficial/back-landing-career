@@ -161,10 +161,4 @@ CORS_ALLOW_HEADERS = (
 
 SWAGGER_SETTINGS = {
    'USE_SESSION_AUTH': False,
-   'SECURITY_DEFINITIONS': {
-        'basic': {
-            'type': 'basic'
-        }
-    },
-    'USE_SESSION_AUTH': False
 }
