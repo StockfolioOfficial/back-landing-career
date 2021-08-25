@@ -11,6 +11,7 @@ from sendgrid.helpers.mail import *
 from core.decorators   import login_required
 from global_variable   import SECRET_KEY, ALGORITHM, SENDGRID_API_KEY, EMAIL_DOMAIN
 from users.models      import User, UserTemp
+from recruits.models   import Recruit
 from users.validation  import validate_email, validate_password
 from users.serializers import SigninBodySerializer, SignupBodySerializer, MyPageGetSerializer, MyPagePatchBodySerializer, VerificationSerializer, VerificationResponseSerializer, ChangePasswordSerializer
 
@@ -73,6 +74,7 @@ class SigninView(APIView):
         data     = json.loads(request.body)
         email    = data['email']
         password = data['password']
+        recruit  = Recruit.objects.get(id=data['recruit_id'])
 
         if not (validate_email(email) and validate_password(password)):
             return JsonResponse({'message': 'BAD_REQUEST'}, status=400)          
@@ -86,15 +88,16 @@ class SigninView(APIView):
 
             access_token = jwt.encode({'user_id': user.id, 'role': user.role}, SECRET_KEY, ALGORITHM)
 
-            return JsonResponse({'access_token': access_token}, status=200)
+            return JsonResponse({'access_token': access_token, 'is_applied': False}, status=200)
         
         encoded_password = password.encode('utf-8')
         hashed_password  = user.password.encode('utf-8')
 
         if bcrypt.checkpw(encoded_password, hashed_password):
             access_token = jwt.encode({'user_id': user.id, 'role': user.role}, SECRET_KEY, ALGORITHM)
+            is_applied   = recruit.applications.filter(user=user).exists()
 
-            return JsonResponse({'access_token': access_token}, status=200)
+            return JsonResponse({'access_token': access_token, 'is_applied': is_applied}, status=200)
 
         return JsonResponse({'message': 'INVALID_PASSWORD'}, status=400)            
 
