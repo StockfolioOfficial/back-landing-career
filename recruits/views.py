@@ -31,13 +31,13 @@ class RecruitListView(APIView):
         },
         operation_id = "채용공고 목록 조회",
         operation_description = "채용공고 목록을 조회합니다. 포지션별 필터링, 마감일/연봉 기준 정렬\n" +
-                                "position: developer, designer, ..\n" +
+                                "position_title: developer, designer, ..\n" +
                                 "sort    : deadline-ascend, salary-descend\n" +
                                 "DEFAULT : 모든 포지션, 최신순"
     )
     def get(self, request):
-        position = request.GET.get("position", "")
-        sort     = request.GET.get("sort", "created-descend")
+        position_title = request.GET.get("position_title", "")
+        sort           = request.GET.get("sort", "created-descend")
 
         sort_dict = {
             "deadline-ascend" : "deadline",
@@ -46,7 +46,7 @@ class RecruitListView(APIView):
         }
 
         recruits = (Recruit.objects.prefetch_related('stacks')
-                                    .filter(position__icontains=position)
+                                    .filter(position_title__icontains=position_title)
                                     .order_by(sort_dict[sort], '-created_at')
                     )
             
@@ -54,6 +54,7 @@ class RecruitListView(APIView):
             {
                 "id"             : recruit.id,
                 "position"       : recruit.position,
+                "position_title" : recruit.position_title,
                 "work_type"      : recruit.work_type,
                 "career_type"    : recruit.get_career_type_display(),
                 "author"         : recruit.author,
@@ -92,6 +93,7 @@ class RecruitListView(APIView):
 
             data           = json.loads(request.body)
             position       = data["position"]
+            position_title = data["position_title"]
             description    = data["description"]
             stack_names    = data["stacks"]
             job_openings   = data["job_openings"]
@@ -119,6 +121,7 @@ class RecruitListView(APIView):
             
             recruit = Recruit.objects.create(
                 position       = position,
+                position_title = position_title,
                 description    = description,
                 work_type      = work_type,
                 career_type    = career_type_choices[career_type],
@@ -163,6 +166,7 @@ class RecruitView(APIView):
             result = {
                 "id"             : recruit.id,
                 "position"       : recruit.position,
+                "position_title" : recruit.position_title,
                 "work_type"      : recruit.work_type,
                 "career_type"    : recruit.get_career_type_display(),
                 "author"         : recruit.author,
@@ -206,6 +210,7 @@ class RecruitView(APIView):
 
             data           = json.loads(request.body)
             position       = data["position"]
+            position_title = data["position_title"]
             description    = data["description"]
             stack_names    = data["stacks"]
             work_type      = data["work_type"]
@@ -231,6 +236,7 @@ class RecruitView(APIView):
                 stacks_to_add.append(object)
 
             recruit.position       = position
+            recruit.position_title = position_title
             recruit.description    = description
             recruit.work_type      = work_type
             recruit.career_type    = career_type_choices[career_type]

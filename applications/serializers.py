@@ -3,7 +3,8 @@ from rest_framework import serializers
 from applications.models import Application
 
 class ApplicationSerializer(serializers.Serializer):
-    content = serializers.JSONField()
+    content   = serializers.JSONField()
+    portfolio = serializers.FileField()
 
 class ApplicationAdminSerializer(serializers.ModelSerializer):
     class Meta:

@@ -27,9 +27,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = SECRET_KEY
 
-
 ALLOWED_HOSTS = ['*']
-
 
 # Application definition
 
@@ -47,6 +45,7 @@ INSTALLED_APPS = [
     'drf_yasg',
     'rest_framework',
     'django_extensions',
+    'storage'
 ]
 
 MIDDLEWARE = [
@@ -122,9 +121,11 @@ USE_TZ = False
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/dev/howto/static-files/
 
-STATIC_ROOT = os.path.join(BASE_DIR, "static")
+STATIC_URL = 'static/'
 
-STATIC_URL = '/static/'
+SWAGGER_SETTINGS = {
+    'USE_SESSION_AUTH': False,
+}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/dev/ref/settings/#default-auto-field

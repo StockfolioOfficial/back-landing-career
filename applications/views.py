@@ -1,15 +1,18 @@
+import boto3
 import json
+import uuid
 
 from django.db.models     import Q
 from django.http          import JsonResponse
 from drf_yasg             import openapi
 from drf_yasg.utils       import swagger_auto_schema
+from rest_framework       import parsers
 from rest_framework.views import APIView
 
 from core.decorators          import login_required, admin_only
-from global_variable          import ADMIN_TOKEN
+from global_variable          import ADMIN_TOKEN, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
 from recruits.models          import Recruit
-from applications.models      import Application
+from applications.models      import Application, Attachment
 from applications.serializers import ApplicationSerializer, ApplicationAdminSerializer, ApplicationAdminPatchSerializer
 
 class ApplicationView(APIView):
@@ -20,6 +23,13 @@ class ApplicationView(APIView):
                                         type        = openapi.TYPE_STRING,
                                         default     = ADMIN_TOKEN
     )
+    parameter_upload = openapi.Parameter(
+                                        "portfolio",
+                                        openapi.IN_FORM,
+                                        description = "upload_file",
+                                        type        = openapi.TYPE_FILE
+    )
+    parser_classes = (parsers.FormParser, parsers.MultiPartParser, parsers.FileUploadParser)
 
     @swagger_auto_schema (
         manual_parameters = [parameter_token],
@@ -39,8 +49,14 @@ class ApplicationView(APIView):
             recruit = Recruit.objects.get(id=recruit_id)
 
             application = recruit.applications.get(user=user)
-
-            result = {"content": application.content}
+            
+            if Attachment.objects.filter(application=application).exists():
+                attachment = Attachment.objects.get(application=application)
+            
+            result = {
+                "content"      : application.content, 
+                "portfolioFile": attachment.file_url if attachment else ""
+            }
 
             return JsonResponse({"result": result}, status=200)
 
@@ -50,7 +66,7 @@ class ApplicationView(APIView):
             return JsonResponse({"message": "NOT_FOUND"}, status=404)
 
     @swagger_auto_schema (
-        manual_parameters = [parameter_token],
+        manual_parameters = [parameter_token, parameter_upload],
         request_body= ApplicationSerializer,
         responses = {
             "201": "SUCCESS",
@@ -59,7 +75,9 @@ class ApplicationView(APIView):
             "400": "BAD_REQUEST"
         },
         operation_id = "해당 공고에 대한 지원서 생성",
-        operation_description = "header에 토큰이, body에 json형식 데이터가 필요합니다."
+        operation_description = "header에 토큰이 필요합니다.\n"+
+                                "formData에 json형식의 데이터가 필요합니다.\n"+
+                                "formData에 파일을 첨부할 수 있습니다."
     )
     
     @login_required
@@ -67,13 +85,42 @@ class ApplicationView(APIView):
         try:
             user    = request.user
             recruit = Recruit.objects.get(id=recruit_id)
+            content = request.POST['content']
+            status  = "ST1"
 
             if recruit.applications.filter(user=user).exists():
                 return JsonResponse({"message": "ALREADY_EXISTS"}, status=400)
 
-            portfolio = request.POST["portfolio"]
-            content   = request.POST["content"]
-            status  = "ST1"
+            if not request.FILES:
+                application = Application.objects.create(
+                                        content = content,
+                                        status  = status,
+                                        user    = user,
+                )
+                application.recruits.add(recruit)
+
+                return JsonResponse({"message": "SUCCESS"}, status=201)
+
+            portfolio = request.FILES['portfolio']
+            
+            s3_client = boto3.client(
+                's3',
+                aws_access_key_id     = AWS_ACCESS_KEY_ID,
+                aws_secret_access_key = AWS_SECRET_ACCESS_KEY
+            )
+
+            file_name = str(uuid.uuid1())
+            
+            s3_client.upload_fileobj(
+                portfolio,
+                "stockers-bucket",
+                file_name,
+                ExtraArgs={
+                    "ContentType": portfolio.content_type
+                }
+            )
+
+            file_url = "stockfolio.coo6llienldy.ap-northeast-2.rds.amazonaws.com/" + file_name
 
             application = Application.objects.create(
                 content = content,
@@ -81,7 +128,12 @@ class ApplicationView(APIView):
                 user    = user,
             )
             application.recruits.add(recruit)
-            
+
+            Attachment.objects.create(
+                file_url    = file_url,
+                application = application
+            )
+
             return JsonResponse({"message": "SUCCESS"}, status=201)
 
         except Recruit.DoesNotExist:
@@ -90,7 +142,7 @@ class ApplicationView(APIView):
             return JsonResponse({"message": "KEY_ERROR"}, status=400)
 
     @swagger_auto_schema (
-        manual_parameters = [parameter_token],
+        manual_parameters = [parameter_token, parameter_upload],
         request_body= ApplicationSerializer,
         responses = {
             "200": "SUCCESS",
@@ -99,7 +151,9 @@ class ApplicationView(APIView):
             "400": "BAD_REQUEST"
         },
         operation_id = "해당 공고에 대한 지원서 수정",
-        operation_description = "header에 토큰이, body에 json형식 데이터가 필요합니다."
+        operation_description = "header에 토큰이 필요합니다.\n"+
+                                "formData에 json형식의 수정 데이터가 필요합니다.\n"+
+                                "formData에 파일을 첨부할 수 있습니다."
     )
     
     @login_required
@@ -108,13 +162,41 @@ class ApplicationView(APIView):
             user    = request.user
             recruit = Recruit.objects.get(id=recruit_id)
             
-            data    = json.loads(request.body)
-            content = data["content"]
+            content = request.POST["content"]
 
             application = recruit.applications.get(user=user)
             application.content = content
             application.save()
+
+            s3_client = boto3.client(
+                's3',
+                aws_access_key_id     = AWS_ACCESS_KEY_ID,
+                aws_secret_access_key = AWS_SECRET_ACCESS_KEY
+            )
+
+            if request.FILES:
+                portfolio = request.FILES["portfolio"]
+                
+                if Attachment.objects.filter(application=application).exists():
+                    attachment = Attachment.objects.get(application=application)
+                    key        = attachment.file_url.replace("stockfolio.coo6llienldy.ap-northeast-2.rds.amazonaws.com/", "")
+                    s3_client.delete_object(Bucket="stockers-bucket", Key=key)    
+
+                file_name = str(uuid.uuid1())
             
+                s3_client.upload_fileobj(
+                    portfolio,
+                    "stockers-bucket",
+                    file_name,
+                    ExtraArgs={"ContentType": portfolio.content_type}
+                )
+
+                file_url = "stockfolio.coo6llienldy.ap-northeast-2.rds.amazonaws.com/" + file_name
+                
+                attachment, is_created = Attachment.objects.get_or_create(application=application)
+                attachment.file_url = file_url
+                attachment.save()
+                
             return JsonResponse({"message": "SUCCESS"}, status=200)
 
         except Recruit.DoesNotExist:
@@ -176,7 +258,7 @@ class ApplicationAdminView(APIView):
     @admin_only
     def get(self, request):
         career_type = request.GET.get('career_type', None)
-        position    = request.GET.get('position', None)
+        position_title    = request.GET.get('position', None)
         status      = request.GET.get('status', None)
 
         q = Q()
@@ -184,8 +266,8 @@ class ApplicationAdminView(APIView):
         if career_type:
             q.add(Q(recruits__career_type = career_type), q.AND)
         
-        if position:
-            q.add(Q(recruits__position = position), q.AND)
+        if position_title:
+            q.add(Q(recruits__position_title = position_title), q.AND)
 
         if status:
             q.add(Q(status = status), q.AND)
@@ -194,17 +276,18 @@ class ApplicationAdminView(APIView):
 
         results = [
             {
-                'content'     : application.content,
-                'status'      : application.status,
-                'created_at'  : application.created_at,
-                'updated_at'  : application.updated_at,
-                'recruit_id'  : [recruits.id for recruits in application.recruits.all()],
-                'job_openings': [recruits.job_openings for recruits in application.recruits.all()],
-                'author'      : [recruits.author for recruits in application.recruits.all()],
-                'work_type'   : [recruits.work_type for recruits in application.recruits.all()],
-                'career_type' : [recruits.career_type for recruits in application.recruits.all()],
-                'position'    : [recruits.position for recruits in application.recruits.all()],
-                'deadline'    : [recruits.deadline for recruits in application.recruits.all()]
+                'content'       : application.content,
+                'status'        : application.status,
+                'created_at'    : application.created_at,
+                'updated_at'    : application.updated_at,
+                'recruit_id'    : [recruits.id for recruits in application.recruits.all()],
+                'job_openings'  : [recruits.job_openings for recruits in application.recruits.all()],
+                'author'        : [recruits.author for recruits in application.recruits.all()],
+                'work_type'     : [recruits.work_type for recruits in application.recruits.all()],
+                'career_type'   : [recruits.career_type for recruits in application.recruits.all()],
+                'position_title': [recruit.position_title for recruit in application.recruits.all()],
+                'position'      : [recruits.position for recruits in application.recruits.all()],
+                'deadline'      : [recruits.deadline for recruits in application.recruits.all()]
             }
         for application in applications]
 
@@ -238,20 +321,21 @@ class ApplicationAdminDetailView(APIView):
 
         results = [
             {   
-                'id'        : application_id,
-                'content'   : application.content,
-                'status'    : application.status,
-                'created_at': application.created_at,
-                'updated_at': application.updated_at,
-                'user_id'   : application.user.id,
-                'user_email': application.user.email,
-                'recruit_id': [recruits.id for recruits in application.recruits.all()],
-                'job_openings': [recruits.job_openings for recruits in application.recruits.all()],
-                'author'      : [recruits.author for recruits in application.recruits.all()],
-                'work_type'   : [recruits.work_type for recruits in application.recruits.all()],
-                'career_type' : [recruits.career_type for recruits in application.recruits.all()],
-                'position'  : [recruits.position for recruits in application.recruits.all()],
-                'deadline'  : [recruits.deadline for recruits in application.recruits.all()]
+                'id'            : application_id,
+                'content'       : application.content,
+                'status'        : application.status,
+                'created_at'    : application.created_at,
+                'updated_at'    : application.updated_at,
+                'user_id'       : application.user.id,
+                'user_email'    : application.user.email,
+                'recruit_id'    : [recruits.id for recruits in application.recruits.all()],
+                'job_openings'  : [recruits.job_openings for recruits in application.recruits.all()],
+                'author'        : [recruits.author for recruits in application.recruits.all()],
+                'work_type'     : [recruits.work_type for recruits in application.recruits.all()],
+                'career_type'   : [recruits.career_type for recruits in application.recruits.all()],
+                'position_title': [recruits.position_type for recruits in application.recruits.all()],
+                'position'      : [recruits.position for recruits in application.recruits.all()],
+                'deadline'      : [recruits.deadline for recruits in application.recruits.all()]
             }
         ]
 

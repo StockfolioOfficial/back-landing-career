@@ -6,11 +6,12 @@ from recruits.models import Recruit
 class RecruitSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Recruit
-        fields = ['position', 'description', 'created_at', 'updated_at', 
+        fields = ['position', 'position_title', 'description', 'created_at', 'updated_at', 
                   'stacks', 'career_type', 'work_type', 'author', 'job_openings','deadline', 'minimum_salary', 'maximum_salary']
 
 class RecruitCreateBodySerializer(serializers.Serializer):
     position       = serializers.CharField()
+    position_title = serializers.CharField()
     description    = serializers.CharField()
     stacks         = serializers.ListField()
     job_openings   = serializers.CharField()
@@ -22,5 +23,5 @@ class RecruitCreateBodySerializer(serializers.Serializer):
     
 
 class RecruitQuerySerializer(serializers.Serializer):
-    position = serializers.CharField(allow_blank=True, allow_null=True, default="")
-    sort     = serializers.CharField(allow_blank=True, allow_null=True, default="")
+    position_title = serializers.CharField(allow_blank=True, allow_null=True, default="")
+    sort           = serializers.CharField(allow_blank=True, allow_null=True, default="")
