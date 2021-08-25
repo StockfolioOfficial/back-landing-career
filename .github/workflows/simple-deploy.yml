@@ -89,4 +89,3 @@ jobs:
           docker rmi $IMAGE_LATEST
           docker pull $IMAGE_LATEST
           docker run -d --name=$CONTAINER_NAME -p $DST_PORT:8000 -e IS_PRODUCTION=True -e JWT_ALG=$JWT_ALG -e JWT_SECRET=$JWT_SECRET -e DB_NAME=$DB_NAME -e DB_USER=$DB_USER -e DB_PASS=$DB_PASS -e DB_HOST=$DB_HOST -e DB_PORT=$DB_PORT -e SG_API_KEY=$SG_API_KEY -e EMAIL_SENDER=$SG_SENDER_HOST $IMAGE_LATEST
-          docker cp $CONTAINER_NAME:/app/static /var/www/html/back-landing-career
