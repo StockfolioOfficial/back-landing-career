@@ -9,7 +9,8 @@ class Recruit(TimeStampModel):
         ('NC', '신입/경력'),
     )
 
-    position       = models.CharField(max_length=50, null=False)
+    position       = models.CharField(max_length=20, null=False)
+    position_title = models.CharField(max_length=50, null=False)
     description    = models.TextField()
     stacks         = models.ManyToManyField('Stack', through='RecruitStack', related_name='recruits')
     applications   = models.ManyToManyField('applications.Application', through='RecruitApplication', related_name='recruits')
