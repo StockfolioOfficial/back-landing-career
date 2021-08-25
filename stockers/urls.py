@@ -1,5 +1,4 @@
 from django.urls import path, re_path, include
-from django.conf import settings
 
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
@@ -12,18 +11,18 @@ urlpatterns = [
     path('', include('helloworld.urls')),
 ]
 
-schema_view = get_schema_view( 
-    openapi.Info( 
-        title            = "Stockers API", 
-        default_version  = "v1", 
-        description      = "Stockers API 문서", 
-        terms_of_service = "https://www.google.com/policies/terms/", 
-        contact          = openapi.Contact(email="test@test.com"), 
-        license          = openapi.License(name="김예랑, 최명준"), 
-    ), 
+schema_view = get_schema_view(
+    openapi.Info(
+        title            = "Stockers API",
+        default_version  = "v1",
+        description      = "Stockers API 문서",
+        terms_of_service = "https://www.google.com/policies/terms/",
+        contact          = openapi.Contact(email="test@test.com"),
+        license          = openapi.License(name="김예랑, 최명준"),
+    ),
 
-    public             = True, 
-    permission_classes = (permissions.AllowAny,), 
+    public             = True,
+    permission_classes = (permissions.AllowAny,),
 )
 
 urlpatterns += [
