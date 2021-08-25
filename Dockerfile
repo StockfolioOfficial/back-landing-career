@@ -10,7 +10,7 @@ WORKDIR /app
 COPY requirements.txt .
 
 RUN apk update && apk upgrade && \
-    apk --update add python3-dev gcc g++ libffi-dev mariadb-dev tzdata
+    apk --update add python3-dev gcc g++ libffi-dev mariadb-dev tzdata make
 
 RUN pip install -r requirements.txt
 
