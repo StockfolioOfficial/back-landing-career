@@ -45,18 +45,15 @@ class ApplicationView(APIView):
     @login_required
     def get(self, request, recruit_id):
         try:
-            user    = request.user
-            recruit = Recruit.objects.get(id=recruit_id)
-
+            user        = request.user
+            recruit     = Recruit.objects.get(id=recruit_id)
             application = recruit.applications.get(user=user)
+            attachment  = Attachment.objects.get(application=application)
             
-            if Attachment.objects.filter(application=application).exists():
-                attachment = Attachment.objects.get(application=application)
-            
-            result = {
-                "content"      : application.content, 
-                "portfolioFile": attachment.file_url if attachment else ""
-            }
+            content = eval(application.content)
+            content["portfolio"]["portfolioUrl"] = attachment.file_url
+
+            result = {"content": content}
 
             return JsonResponse({"result": result}, status=200)
 
@@ -92,12 +89,20 @@ class ApplicationView(APIView):
                 return JsonResponse({"message": "ALREADY_EXISTS"}, status=400)
 
             if not request.FILES:
+                content_dict = eval(content)
+                file_url     = content_dict["portfolio"]["portfolioUrl"]
+
                 application = Application.objects.create(
                                         content = content,
                                         status  = status,
                                         user    = user,
                 )
                 application.recruits.add(recruit)
+
+                Attachment.objects.create(
+                    file_url    = file_url,
+                    application = application
+                )
 
                 return JsonResponse({"message": "SUCCESS"}, status=201)
 
@@ -168,6 +173,8 @@ class ApplicationView(APIView):
             application.content = content
             application.save()
 
+            attachment = Attachment.objects.get(application=application)
+
             s3_client = boto3.client(
                 's3',
                 aws_access_key_id     = AWS_ACCESS_KEY_ID,
@@ -176,12 +183,6 @@ class ApplicationView(APIView):
 
             if request.FILES:
                 portfolio = request.FILES["portfolio"]
-                
-                if Attachment.objects.filter(application=application).exists():
-                    attachment = Attachment.objects.get(application=application)
-                    key        = attachment.file_url.replace("stockfolio.coo6llienldy.ap-northeast-2.rds.amazonaws.com/", "")
-                    s3_client.delete_object(Bucket="stockers-bucket", Key=key)    
-
                 file_name = str(uuid.uuid1())
             
                 s3_client.upload_fileobj(
@@ -193,9 +194,17 @@ class ApplicationView(APIView):
 
                 file_url = "stockfolio.coo6llienldy.ap-northeast-2.rds.amazonaws.com/" + file_name
                 
-                attachment, is_created = Attachment.objects.get_or_create(application=application)
-                attachment.file_url = file_url
-                attachment.save()
+            else:
+                content_dict = eval(content)
+                file_url     = content_dict["portfolio"]["portfolioUrl"]
+
+            if "stockfolio.coo6llienldy.ap-northeast-2.rds.amazonaws.com/" in attachment.file_url:
+                if not file_url == attachment.file_url:
+                    key = attachment.file_url.replace("stockfolio.coo6llienldy.ap-northeast-2.rds.amazonaws.com/", "")
+                    s3_client.delete_object(Bucket="stockers-bucket", Key=key)
+                
+            attachment.file_url = file_url
+            attachment.save()
                 
             return JsonResponse({"message": "SUCCESS"}, status=200)
 
