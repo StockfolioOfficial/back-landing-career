@@ -1,21 +1,31 @@
 # back-landing-career
 ## 프로젝트 소개
-- 스톡폴리오 유저, 채용, 지원 관련 기능 구현
+- 스톡폴리오 ~~~~~~~~~~~~
 ### 개발 인원 및 기간
 - 개발 기간 : 2021-08-02 ~ 2021-08-25
 - 개발 인원 : 최명준, 김예랑
 ## 적용 기술 및 구현 기능
-### 적용 기술
-- Python, Django, MySQL, Sendgrid, Swagger, s3
-### 협업 도구
-- Git + GitHub
+#### 기술 스택
+- Python, Django, MySQL, Sendgrid, s3(AWS storage)
+#### API 문서화
+- Swagger (with drf-yasg)
+#### 협업 도구
+- Git + GitHub, Github Issues, Github Projects
+#### 배포 관련
+- Docker, Github Actions, AWS(ECR, EC2, RDS)
 ### 구현 기능
-- 유저 회원가입/로그인, 정보조회/수정, 비밀번호 변경 관련 API
+- 유저 회원가입/로그인, 정보 조회/수정, 비밀번호 변경 관련 API
 - 채용 목록 조회/생성, 채용 상세 조회/수정/삭제 API 
 - 지원서 작성, 조회, 수정, 삭제 API
 - 지원 이력 관리(관리자 전용) API
-## 테이블 관계도, ERD
+## 참고 자료
+### 테이블 관계도
+![stockers TableRelationship](https://user-images.githubusercontent.com/74804995/130888892-e298b03c-eb24-4fe4-bc74-59b79f9a8281.png)
+### ERD
+![stockers ERD](https://user-images.githubusercontent.com/74804995/130889001-ac4e9b6b-c104-4e05-8d4c-296657b52c7a.png)
+
 
 ## Reference
-- 이 프로젝트는 스톡폴리오 채용 관련 웹  ~~ 만들었습니다.
-- 이 프로젝트는 오픈 소스이지만 권한이 없는 경우 무단으로 클론, 배포할 수 없습니다.
+- 이 프로젝트는 영상 편집 및 구독서비스 제공 기업 스톡폴리오의 채용 관련 페이지를 구현한 오픈소스 프로젝트입니다.
+- 누구나 어떤 목적으로든 프로젝트를 보고, 사용하고, 수정하고, 배포할 수 있습니다. 
+- 관련 권한은 <a href="https://opensource.org/licenses" target="_blank">open source license</a>를 통해 적용됩니다.
