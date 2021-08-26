@@ -6,8 +6,10 @@
 - 개발 기간 : 2021-08-02 ~ 2021-08-25
 - 개발 인원 : 최명준, 김예랑
 ## 적용 기술 및 구현 기능
-#### 기술 스택
-- Python, Django, MySQL, Sendgrid, s3(AWS storage)
+#### 언어, 프레임워크, 데이터베이스
+- Python, Django, MySQL
+#### 기타 도구
+- Sendgrid, s3(AWS storage)
 #### API 문서화
 - Swagger (with drf-yasg)
 #### 협업 도구
