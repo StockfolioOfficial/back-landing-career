@@ -30,4 +30,7 @@
 
 ## Reference
 - 오픈소스 프로젝트로 누구나 어떤 목적으로든 프로젝트를 보고, 사용하고, 수정하고, 배포할 수 있습니다. 
-- 관련 권한은 <a href="https://opensource.org/licenses" target="_blank">open source license</a>를 통해 적용됩니다.
+
+# License
+[`MIT License`](./LICENSE)
+
