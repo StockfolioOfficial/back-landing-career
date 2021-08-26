@@ -8,8 +8,9 @@ class SignupBodySerializer(serializers.Serializer):
     password_check = serializers.CharField()
 
 class SigninBodySerializer(serializers.Serializer):
-    email    = serializers.EmailField()
-    password = serializers.CharField()
+    email      = serializers.EmailField()
+    password   = serializers.CharField()
+    recruit_id = serializers.IntegerField()
 
 class MyPageGetSerializer(serializers.ModelSerializer):
     class Meta:
