@@ -1,13 +1,13 @@
 **COMMIT CONVENTION**
 
-"issue number" "type"("optional scope"): "description"
+"type"("optional scope"): "description"
 
 example:
 
-- #1 add(productdetail): 상품 목록 api                 //1st commit
-- #1 add(productdetail): 상품 캐싱 db, dao             //2nd commit
-- #1 add(productdetail): 상품 repository 및 페이징 처리  //3rd commit
-- #1 add(productdetail): ...
+- add(productdetail): 상품 목록 api                 //1st commit
+- add(productdetail): 상품 캐싱 db, dao             //2nd commit
+- add(productdetail): 상품 repository 및 페이징 처리  //3rd commit
+- add(productdetail): ...
 
 
 **TYPE**
