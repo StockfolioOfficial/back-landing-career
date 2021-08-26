@@ -23,7 +23,7 @@
 ### 테이블 관계도
 ![stockers TableRelationship](https://user-images.githubusercontent.com/74804995/130888892-e298b03c-eb24-4fe4-bc74-59b79f9a8281.png)
 ### ERD
-![stockers ERD](https://user-images.githubusercontent.com/74804995/130889001-ac4e9b6b-c104-4e05-8d4c-296657b52c7a.png)
+![stockers ERD](https://user-images.githubusercontent.com/74804995/130898163-45f9f30e-f08a-4298-856a-8b246863b7e3.png)
 
 
 ## Reference
