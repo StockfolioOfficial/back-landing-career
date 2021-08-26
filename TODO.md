@@ -8,4 +8,4 @@
 - DRF를 학습, 적용하여 코드 리팩토링
 - 위의 과정에서 Serializer 및 문서화 개선
 - 코드나 커밋 컨벤션을 상의하여 정해서 프로젝트 진행
-- Github 이슈, 프로젝트 이용한 Task 관리
+- Github Issues, Projects 이용한 Task 관리
