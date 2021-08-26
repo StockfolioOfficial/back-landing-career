@@ -50,9 +50,8 @@ class ApplicationView(APIView):
             application = recruit.applications.get(user=user)
             attachment  = Attachment.objects.get(application=application)
             
-            content = eval(application.content)
+            content = application.content
             content["portfolio"]["portfolioUrl"] = attachment.file_url
-
             result = {"content": content}
 
             return JsonResponse({"result": result}, status=200)
@@ -83,15 +82,15 @@ class ApplicationView(APIView):
             user    = request.user
             recruit = Recruit.objects.get(id=recruit_id)
             content = request.POST['content']
+            content  = json.loads(content)
             status  = "ST1"
 
             if recruit.applications.filter(user=user).exists():
                 return JsonResponse({"message": "ALREADY_EXISTS"}, status=400)
 
             if not request.FILES:
-                content_dict = eval(content)
-                file_url     = content_dict["portfolio"]["portfolioUrl"]
-
+                file_url = content["portfolio"]["portfolioUrl"]
+                
                 application = Application.objects.create(
                                         content = content,
                                         status  = status,
@@ -168,7 +167,8 @@ class ApplicationView(APIView):
             recruit = Recruit.objects.get(id=recruit_id)
             
             content = request.POST["content"]
-
+            content = json.loads(content)
+            
             application = recruit.applications.get(user=user)
             application.content = content
             application.save()
@@ -195,8 +195,7 @@ class ApplicationView(APIView):
                 file_url = "stockfolio.coo6llienldy.ap-northeast-2.rds.amazonaws.com/" + file_name
                 
             else:
-                content_dict = eval(content)
-                file_url     = content_dict["portfolio"]["portfolioUrl"]
+                file_url = content["portfolio"]["portfolioUrl"]
 
             if "stockfolio.coo6llienldy.ap-northeast-2.rds.amazonaws.com/" in attachment.file_url:
                 if not file_url == attachment.file_url:
