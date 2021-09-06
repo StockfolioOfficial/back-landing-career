@@ -8,4 +8,5 @@ urlpatterns = [
     path("/signup", SignupView.as_view()),
     path("/verification", VerificationView.as_view()),
     path('/admins', SuperadminView.as_view()),
+    path('/admin/<int:user_id>', SuperadminView.as_view()),
 ]
