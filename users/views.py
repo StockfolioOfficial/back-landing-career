@@ -8,12 +8,12 @@ from rest_framework.views import APIView
 
 from sendgrid.helpers.mail import *
 
-from core.decorators   import login_required
+from core.decorators   import login_required, admin_only, superadmin_only
 from global_variable   import SECRET_KEY, ALGORITHM, SENDGRID_API_KEY, EMAIL_DOMAIN
 from users.models      import User, UserTemp
 from recruits.models   import Recruit
 from users.validation  import validate_email, validate_password
-from users.serializers import SigninBodySerializer, SignupBodySerializer, MyPageGetSerializer, MyPagePatchBodySerializer, VerificationSerializer, VerificationResponseSerializer, ChangePasswordSerializer
+from users.serializers import SigninBodySerializer, SignupBodySerializer, MyPageGetSerializer, MyPagePatchBodySerializer, VerificationSerializer, VerificationResponseSerializer, ChangePasswordSerializer, SuperadminGetSerializer
 
 class SignupView(APIView):
     @swagger_auto_schema (
@@ -263,3 +263,81 @@ class UserMyPageView(APIView):
         user.save()
 
         return JsonResponse({"message": "SUCCESS"}, status=200)
+
+class SuperadminView(APIView):
+    parameter_token = openapi.Parameter (
+                                        "Authorization", 
+                                        openapi.IN_HEADER, 
+                                        description = "access_token", 
+                                        type        = openapi.TYPE_STRING
+    )
+
+    # supaeradmin_get_response = openapi.Response("result", SuperadminGetSerializer)
+    mypage_get_response = openapi.Response("result", MyPageGetSerializer)
+
+    @swagger_auto_schema (
+        manual_parameters = [parameter_token],
+        responses = {
+            "200": mypage_get_response,
+            "400": "BAD_REQUEST",
+            "401": "INVALID_TOKEN"
+        },
+        operation_id = "어드민 정보 조회",
+        operation_description = "header에 토큰이 필요합니다."
+    )
+    @superadmin_only
+    def get(self, request):    
+        user  = request.user
+        # admins = User.objects.get(role='admin').all() 
+        
+        result = {
+            "email"     : user.email,
+            "created_at": user.created_at,
+            "updated_at": user.updated_at,
+        }
+
+        # results = [{
+        #     "email"     : admin.email,
+        #     # "name"      : admin.email.split('@')[0],
+        #     "created_at": admin.created_at,
+        #     "updated_at": admin.updated_at,
+        #     # "password"  : "**********"
+        # } for admin in admins]
+
+        return JsonResponse({"result": result}, status=200)
+
+    # @swagger_auto_schema (
+    #     manual_parameters = [parameter_token],
+    #     request_body      = MyPagePatchBodySerializer,
+    #     responses = {
+    #         "200": "SUCCESS",
+    #         "400": "BAD_REQUEST",
+    #         "401": "INVALID_TOKEN"
+    #     },
+    #     operation_id = "어드민 정보 수정",
+    #     operation_description = "header에 토큰, body에 수정 값이 필요합니다."
+    # )
+    # @superadmin_only
+    # def patch(self, request):
+    #     user = request.user
+    #     data = json.loads(request.body)
+
+    #     new_password       = data["new_password"]
+    #     new_password_check = data["new_password_check"]
+
+    #     if not (new_password and new_password_check):
+    #         return JsonResponse({"message": "KEY_ERROR"}, status=400)
+
+    #     if not new_password == new_password_check:
+    #         return JsonResponse({"message": "BAD_REQUEST"}, status=400)
+
+    #     if not validate_password(new_password):
+    #         return JsonResponse({"message": "INVALID_PASSWORD"}, status=400)
+
+    #     encoded_new_password = new_password.encode('utf-8')
+    #     hashed_new_password  = bcrypt.hashpw(encoded_new_password, bcrypt.gensalt()).decode('utf-8')
+
+    #     user.password = hashed_new_password
+    #     user.save()
+
+    #     return JsonResponse({"message": "SUCCESS"}, status=200)
