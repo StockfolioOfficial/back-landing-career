@@ -281,7 +281,7 @@ class SuperAdminView(APIView):
             "400": "BAD_REQUEST",
             "401": "INVALID_TOKEN"
         },
-        operation_id = "어드민 정보 조회",
+        operation_id = "(슈퍼관리자 전용)어드민 정보 조회",
         operation_description = "header에 토큰이 필요합니다."
     )
     @superadmin_only
@@ -307,7 +307,7 @@ class SuperAdminView(APIView):
             "400": "BAD_REQUEST",
             "401": "INVALID_TOKEN"
         },
-        operation_id = "어드민 생성",
+        operation_id = "(슈퍼관리자 전용)어드민 생성",
         operation_description = "header에 토큰, body에 이메일, 비밀번호 값이 필요합니다, 이메일(abc@def.com 등의 이메일 형식), 패스워드(영문, 숫자, 특수기호) validation이 적용되어 있습니다."
     )
 
@@ -361,7 +361,7 @@ class SuperAdminModifyView(APIView):
             "400": "BAD_REQUEST",
             "401": "INVALID_TOKEN"
         },
-        operation_id = "어드민 정보 수정",
+        operation_id = "(슈퍼관리자 전용)어드민 정보 수정",
         operation_description = "header에 토큰, body에 수정 값이 필요합니다."
     )
     @superadmin_only
@@ -396,7 +396,7 @@ class SuperAdminModifyView(APIView):
             "400": "BAD_REQUEST",
             "401": "INVALID_TOKEN"
         },
-        operation_id = "어드민 삭제",
+        operation_id = "(슈퍼관리자 전용)어드민 삭제",
         operation_description = "header에 토큰값이 필요합니다."
     )
     @superadmin_only
