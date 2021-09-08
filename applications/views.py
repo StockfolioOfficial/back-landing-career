@@ -10,10 +10,37 @@ from rest_framework       import parsers
 from rest_framework.views import APIView
 
 from core.decorators          import login_required, admin_only
-from global_variable          import ADMIN_TOKEN, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+from global_variable          import ADMIN_TOKEN, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, BUCKET_NAME
 from recruits.models          import Recruit
 from applications.models      import Application, Attachment
 from applications.serializers import ApplicationSerializer, ApplicationAdminSerializer, ApplicationAdminPatchSerializer
+
+class CloudStorage:
+    def __init__(self, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, BUCKET_NAME):
+        self.AWS_ACCESS_KEY_ID = ACCESS_KEY_ID
+        self.AWS_SECRET_ACCESS_KEY = SECRET_ACCESS_KEY
+        self.BUCKET_NAME = BUCKET_NAME
+        self.client = boto3.client(
+                's3',
+                aws_access_key_id     = ACCESS_KEY_ID,
+                aws_secret_access_key = SECRET_ACCESS_KEY,
+            )
+    def upload_file(self, file):
+        # unique_id = str(uuid.uuid4()) + file.name
+        file_url = "stockfolio.coo6llienldy.ap-northeast-2.rds.amazonaws.com/" + file_name
+        return s3_client.upload_fileobj(
+                file,
+                self.BUCKET_NAME,
+                file_url,
+                ExtraArgs={
+                    "ContentType": portfolio.content_type
+                }
+            )
+
+    def delete_file(self, file_url, project_id):
+        file_url = Project.objects.get(id=project_id).file_url
+        bucket = self.resource.Bucket(name=BUCKET_NAME)
+        bucket.Object(key = file_url).delete()
 
 class ApplicationView(APIView):
     parameter_token = openapi.Parameter (
@@ -82,7 +109,7 @@ class ApplicationView(APIView):
             user    = request.user
             recruit = Recruit.objects.get(id=recruit_id)
             content = request.POST['content']
-            content  = json.loads(content)
+            content = json.loads(content)
             status  = "ST1"
 
             if recruit.applications.filter(user=user).exists():
@@ -90,6 +117,7 @@ class ApplicationView(APIView):
 
             if not request.FILES:
                 file_url = content["portfolio"]["portfolioUrl"]
+                print(file_url)
                 
                 application = Application.objects.create(
                                         content = content,
@@ -104,19 +132,28 @@ class ApplicationView(APIView):
                 )
 
                 return JsonResponse({"message": "SUCCESS"}, status=201)
-
-            portfolio = request.FILES['portfolio']
             
+            # if request.FILES:
+            #     file = request.FILES['portfolio']
+            
+            # if file:
+            #     cloud_storage.upload_file(file)
+            #     file_url = file.url
+            #     #이 코드에는 에러가 있는데 url를 cloud_storage에서 전달받아 쓰지를 못해서 수정/삭제하고자할 때 이 값을 찾을 수가 없다.
+
+            # if not file:
+            #     return JsonResponse({'MESSAGE' : 'RESUME_EMPTY'}, status=400)
+
             s3_client = boto3.client(
                 's3',
                 aws_access_key_id     = AWS_ACCESS_KEY_ID,
                 aws_secret_access_key = AWS_SECRET_ACCESS_KEY
             )
 
-            file_name = str(uuid.uuid1())
+            file_name = str(uuid.uuid1()) + file.name
             
             s3_client.upload_fileobj(
-                portfolio,
+                file,
                 "stockers-bucket",
                 file_name,
                 ExtraArgs={
