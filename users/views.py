@@ -264,7 +264,7 @@ class UserMyPageView(APIView):
 
         return JsonResponse({"message": "SUCCESS"}, status=200)
 
-class SuperadminView(APIView):
+class SuperAdminView(APIView):
     parameter_token = openapi.Parameter (
                                         "Authorization", 
                                         openapi.IN_HEADER, 
@@ -289,6 +289,7 @@ class SuperadminView(APIView):
         admins = User.objects.filter(role='admin').all() 
 
         result = [{
+            "id"        : admin.id,
             "email"     : admin.email,
             "name"      : admin.email.split('@')[0],
             "created_at": admin.created_at,
@@ -297,6 +298,60 @@ class SuperadminView(APIView):
         } for admin in admins]
 
         return JsonResponse({"result": result}, status=200)
+    
+    @swagger_auto_schema (
+        manual_parameters = [parameter_token],
+        request_body      = SignupBodySerializer,
+        responses = {
+            "200": "SUCCESS",
+            "400": "BAD_REQUEST",
+            "401": "INVALID_TOKEN"
+        },
+        operation_id = "어드민 생성",
+        operation_description = "header에 토큰, body에 이메일, 비밀번호 값이 필요합니다, 이메일(abc@def.com 등의 이메일 형식), 패스워드(영문, 숫자, 특수기호) validation이 적용되어 있습니다."
+    )
+
+    @superadmin_only
+    def post(self, request):
+        try: 
+            data = json.loads(request.body)
+
+            if not validate_email(data['email']):
+                return JsonResponse({'message': 'INVALID_EMAIL_FORMAT'}, status=400)
+
+            if User.objects.filter(email=data['email']).exists():
+                return JsonResponse({'message': 'ALREADY_EXISTED_EMAIL'}, status=400)           
+            
+            if not validate_password(data['password']):
+                return JsonResponse({'message': 'INVALID_PASSWORD_FORMAT'}, status=400)
+            
+            password       = data['password']
+            password_check = data['password_check'] 
+            
+            if password != password_check:
+                return JsonResponse({'message': 'BAD_REQUEST'}, status=400) 
+
+            encoded_password = data['password'].encode('utf-8')
+            hashed_password  = bcrypt.hashpw(encoded_password, bcrypt.gensalt())
+            
+            User.objects.create(
+                email    = data['email'],
+                password = hashed_password.decode('utf-8'),
+                role     = 'admin'
+            )
+
+            return JsonResponse({"message": "SUCCESS"}, status=200)
+
+        except KeyError:
+            return JsonResponse({'message': 'KEY_ERROR'}, status=400)
+
+class SuperAdminModifyView(APIView):
+    parameter_token = openapi.Parameter (
+                                        "Authorization", 
+                                        openapi.IN_HEADER, 
+                                        description = "access_token", 
+                                        type        = openapi.TYPE_STRING
+    )
 
     @swagger_auto_schema (
         manual_parameters = [parameter_token],
@@ -347,7 +402,8 @@ class SuperadminView(APIView):
     @superadmin_only
     def delete(self, request, user_id):
         user = User.objects.get(id=user_id)
+        if not user.role == 'admin':
+            return JsonResponse({"message": "INVALID_USER"}, status=400)
         user.delete()
 
         return JsonResponse({"message": "SUCCESS"}, status=200)
-    
