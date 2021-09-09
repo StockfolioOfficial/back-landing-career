@@ -32,20 +32,21 @@ class CloudStorage:
             )
 
     def upload_file(self, file):
-        file_url = "stockfolio.coo6llienldy.ap-northeast-2.rds.amazonaws.com/" + str(uuid.uuid1()) + file.name
-        return self.client.upload_fileobj(
-                file,
-                self.BUCKET_NAME,
-                file_url,
-                ExtraArgs={
-                    "ContentType": file.content_type
-                }
-            )
+        file_name = str(uuid.uuid1()) +"_"+ file.name
+        self.client.upload_fileobj(
+                        file,
+                        self.BUCKET_NAME,
+                        file_name,
+                        ExtraArgs={
+                            "ContentType": file.content_type
+                        }
+        )
+        return "stockfolio.coo6llienldy.ap-northeast-2.rds.amazonaws.com/" + file_name
 
-    def delete_file(self, file_url, application_id):
-        file_url = Attachment.objects.get(id=application_id).file_url
+    def delete_file(self, application_id):
+        file_url = Attachment.objects.get(application_id=application_id).file_url
         bucket = self.resource.Bucket(name=BUCKET_NAME)
-        bucket.Object(key = file_url).delete()
+        bucket.Object(file_url[57:]).delete()
 
 class ApplicationView(APIView):
     parameter_token = openapi.Parameter (
@@ -114,19 +115,18 @@ class ApplicationView(APIView):
         try:
             user    = request.user
             recruit = Recruit.objects.get(id=recruit_id)
-            content = request.POST['content']
-            content = json.loads(content)
+            content = json.loads(request.POST['content'])
             status  = "ST1"
+            file    = request.FILES
 
             if recruit.applications.filter(user=user).exists():
                 return JsonResponse({"message": "ALREADY_EXISTS"}, status=400)
 
-            if not request.FILES:
+            if not file:
                 file_url = content["portfolio"]["portfolioUrl"]
                 
-            if request.FILES:
-                file = request.FILES['portfolio']
-                cloud_storage.upload_file(file)
+            if file:
+                file_url = cloud_storage.upload_file(file["portfolio"])
 
             application = Application.objects.create(
                 content = content,
@@ -167,44 +167,22 @@ class ApplicationView(APIView):
         cloud_storage = CloudStorage(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, BUCKET_NAME)
         try:
             user    = request.user
-            recruit = Recruit.objects.get(id=recruit_id)
+            file    = request.FILES
+            content = json.loads(request.POST["content"])
             
-            content = request.POST["content"]
-            content = json.loads(content)
-            
-            application = recruit.applications.get(user=user)
+            application = Recruit.objects.get(id=recruit_id).applications.get(user=user)
             application.content = content
             application.save()
 
             attachment = Attachment.objects.get(application=application)
-
-            s3_client = boto3.client(
-                's3',
-                aws_access_key_id     = AWS_ACCESS_KEY_ID,
-                aws_secret_access_key = AWS_SECRET_ACCESS_KEY
-            )
-
-            if request.FILES:
-                portfolio = request.FILES["portfolio"]
-                file_name = str(uuid.uuid1())
             
-                s3_client.upload_fileobj(
-                    portfolio,
-                    "stockers-bucket",
-                    file_name,
-                    ExtraArgs={"ContentType": portfolio.content_type}
-                )
-
-                file_url = "stockfolio.coo6llienldy.ap-northeast-2.rds.amazonaws.com/" + file_name
-                
+            if file:
+                cloud_storage.delete_file(application.id)
+                attachment.delete()
+                file_url = cloud_storage.upload_file(file["portfolio"])
             else:
                 file_url = content["portfolio"]["portfolioUrl"]
-
-            if "stockfolio.coo6llienldy.ap-northeast-2.rds.amazonaws.com/" in attachment.file_url:
-                if not file_url == attachment.file_url:
-                    key = attachment.file_url.replace("stockfolio.coo6llienldy.ap-northeast-2.rds.amazonaws.com/", "")
-                    s3_client.delete_object(Bucket="stockers-bucket", Key=key)
-                
+            
             attachment.file_url = file_url
             attachment.save()
                 
@@ -232,10 +210,10 @@ class ApplicationView(APIView):
     def delete(self, request, recruit_id):
         cloud_storage = CloudStorage(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, BUCKET_NAME)
         try:
-            user    = request.user
-            recruit = Recruit.objects.get(id=recruit_id)
+            user        = request.user
+            application = Recruit.objects.get(id=recruit_id).applications.get(user=user)
 
-            application = recruit.applications.get(user=user)
+            cloud_storage.delete_file(application.id)
             application.delete()
 
             return JsonResponse({"message": "SUCCESS"}, status=200)
