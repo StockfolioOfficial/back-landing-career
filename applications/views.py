@@ -115,7 +115,8 @@ class ApplicationView(APIView):
             user    = request.user
             recruit = Recruit.objects.get(id=recruit_id)
             content = request.POST['content']
-            content = json.loads(content)
+            content  = json.loads(content)
+
             status  = "ST1"
 
             if recruit.applications.filter(user=user).exists():
@@ -124,9 +125,45 @@ class ApplicationView(APIView):
             if not request.FILES:
                 file_url = content["portfolio"]["portfolioUrl"]
                 
+
             if request.FILES:
                 file = request.FILES['portfolio']
                 cloud_storage.upload_file(file)
+                application = Application.objects.create(
+                                        content = content,
+                                        status  = status,
+                                        user    = user,
+                )
+                application.recruits.add(recruit)
+
+                Attachment.objects.create(
+                    file_url    = file_url,
+                    application = application
+                )
+
+                return JsonResponse({"message": "SUCCESS"}, status=201)
+
+            portfolio = request.FILES['portfolio']
+            
+            s3_client = boto3.client(
+                's3',
+                aws_access_key_id     = AWS_ACCESS_KEY_ID,
+                aws_secret_access_key = AWS_SECRET_ACCESS_KEY
+            )
+
+            file_name = str(uuid.uuid1())
+            
+            s3_client.upload_fileobj(
+                portfolio,
+                "stockers-bucket",
+                file_name,
+                ExtraArgs={
+                    "ContentType": portfolio.content_type
+                }
+            )
+
+            file_url = "stockfolio.coo6llienldy.ap-northeast-2.rds.amazonaws.com/" + file_name
+
 
             application = Application.objects.create(
                 content = content,
