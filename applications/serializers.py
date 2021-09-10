@@ -15,3 +15,7 @@ class ApplicationAdminPatchSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Application
         fields = ['status']
+
+class CommentAdminSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Comment

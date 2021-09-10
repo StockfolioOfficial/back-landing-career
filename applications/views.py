@@ -2,6 +2,7 @@ import boto3
 import json
 import uuid
 
+from datetime             import datetime
 from django.db.models     import Q
 from django.http          import JsonResponse
 from drf_yasg             import openapi
@@ -327,6 +328,11 @@ class ApplicationAdminDetailView(APIView):
     def get(self, request, application_id):
         application = Application.objects.get(id=application_id)
 
+        attachment  = Attachment.objects.get(application=application)
+        
+        content = application.content
+        content["portfolio"]["portfolioUrl"] = attachment.file_url
+        
         results = [
             {   
                 'id'            : application_id,
@@ -341,7 +347,7 @@ class ApplicationAdminDetailView(APIView):
                 'author'        : [recruits.author for recruits in application.recruits.all()],
                 'work_type'     : [recruits.work_type for recruits in application.recruits.all()],
                 'career_type'   : [recruits.career_type for recruits in application.recruits.all()],
-                'position_title': [recruits.position_type for recruits in application.recruits.all()],
+                'position_title' : [recruits.position_title for recruits in application.recruits.all()],
                 'position'      : [recruits.position for recruits in application.recruits.all()],
                 'deadline'      : [recruits.deadline for recruits in application.recruits.all()]
             }
@@ -373,4 +379,126 @@ class ApplicationAdminDetailView(APIView):
             return JsonResponse({'message': 'SUCCESS'}, status=200)
 
         except Application.DoesNotExist:
+            return JsonResponse({'message': 'NOT_FOUND'}, status=404)
+
+
+class CommentAdminView(APIView):
+    parameter_token = openapi.Parameter (
+                                        "Authorization", 
+                                        openapi.IN_HEADER, 
+                                        description = "access_token", 
+                                        type        = openapi.TYPE_STRING,
+                                        default     = ADMIN_TOKEN
+    )
+    comment_admin_response = openapi.Response("result", CommentAdminSerializer)
+
+    @swagger_auto_schema (
+        manual_parameters = [parameter_token],
+        responses = {
+            "200": comment_admin_response,
+            "400": "BAD_REQUEST",
+            "401": "UNAUTHORIZED"
+        },
+        operation_id = "(관리자 전용) 지원서 코멘트 조회",
+        operation_description = "header에 토큰이 필요합니다."
+    )
+
+    @admin_only
+    def get(self, request, application_id):
+        application = Application.objects.get(id=application_id)
+        
+        results = {  
+            'comments' : {
+                    'admin_id'   : comment.user_id,
+                    'created_at' : comment.created_at,
+                    'updated_at' : comment.updated_at,
+                    'description': comment.description,
+                    'score'      : comment.score  
+            } for comment in Comment.objects.filter(application=application)}
+
+        return JsonResponse({'results': results}, status=200)
+    
+    @swagger_auto_schema (
+        manual_parameters = [parameter_token],
+        responses = {
+            "200": comment_admin_response,
+            "400": "BAD_REQUEST",
+            "401": "UNAUTHORIZED"
+        },
+        operation_id = "(관리자 전용) 지원서 코멘트 생성",
+        operation_description = "header에 토큰이, body에 description과 score입력이 필요합니다.\n"
+    )
+
+    @admin_only
+    def post(self, request, application_id):
+        data = json.loads(request.body)
+        application = Application.objects.get(id=application_id)
+        
+        comment.Objects.create(
+            admin_id       = request.user.id,
+            application_id = application.id,
+            description    = data['comment'],
+            score          = data['score'],  
+        )
+
+        return JsonResponse({'message': 'SUCCESS'}, status=200)
+    
+
+    @swagger_auto_schema (
+        manual_parameters = [parameter_token],
+        request_body = ApplicationAdminPatchSerializer,
+        responses = {
+            "200": "SUCCESS",
+            "400": "BAD_REQUEST",
+            "401": "UNAUTHORIZED"
+        },
+        operation_id = "(관리자 전용) 지원서 코멘트 및 평가 수정",
+        operation_description = "header에 토큰이, body에 description과 score입력이 필요합니다.\n"
+    )
+
+    @admin_only
+    def patch(self, request, application_id, comment_id): 
+        try:
+            data = json.loads(request.body)
+            user = request.user
+            comments = Comment.objects.filter(application=application)
+            
+            if not request.user.id == comments.user_id:
+                return JsonResponse({'message': 'NOT_AUTHORIZED'}, status=403)
+            
+            Comment.objects.get(id=comment_id, user_id = user.id).update(
+                admin_id       = request.user.id,
+                application_id = application.id,
+                description    = data['comment'],
+                score          = data['score']
+            )
+            
+            return JsonResponse({'message': 'SUCCESS'}, status=200)
+
+        except Comment.DoesNotExist:
+            return JsonResponse({'message': 'NOT_FOUND'}, status=404)
+    
+    @swagger_auto_schema (
+        manual_parameters = [parameter_token],
+        request_body = ApplicationAdminPatchSerializer,
+        responses = {
+            "200": "SUCCESS",
+            "400": "BAD_REQUEST",
+            "401": "UNAUTHORIZED"
+        },
+        operation_id = "(관리자 전용) 지원서 코멘트 및 평가 삭제",
+        operation_description = "header에 토큰이, body에 description과 score입력이 필요합니다.\n"
+    )
+    
+    @login_required
+    def delete(self, request, comment_id):
+        try:
+            if not request.user.id == comments.user_id:
+                return JsonResponse({'message': 'NOT_AUTHORIZED'}, status=403)
+
+            Comment.objects.get(id= comment_id).delete()
+
+            return JsonResponse({"message": "SUCCESS"}, status=200)
+
+        except Comment.DoesNotExist:
             return JsonResponse({'message': 'NOT_FOUND'}, status=404)
