@@ -347,7 +347,7 @@ class ApplicationAdminDetailView(APIView):
                 'author'        : [recruits.author for recruits in application.recruits.all()],
                 'work_type'     : [recruits.work_type for recruits in application.recruits.all()],
                 'career_type'   : [recruits.career_type for recruits in application.recruits.all()],
-                'position_title' : [recruits.position_title for recruits in application.recruits.all()],
+                'position_title': [recruits.position_title for recruits in application.recruits.all()],
                 'position'      : [recruits.position for recruits in application.recruits.all()],
                 'deadline'      : [recruits.deadline for recruits in application.recruits.all()]
             }
