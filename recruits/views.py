@@ -1,15 +1,17 @@
 import json, sys, hashlib, sha3
-
+from datetime     import date,timedelta
 from django.http  import JsonResponse
+from typing       import Counter
 
 from rest_framework.views import APIView
 
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg       import openapi
 
-from global_variable import ADMIN_TOKEN
-from recruits.models import Recruit, Stack, RecruitStack
-from core.decorators import admin_only
+from global_variable      import ADMIN_TOKEN
+from recruits.models      import Recruit, Stack, RecruitStack
+from applications.models  import Application
+from core.decorators      import admin_only
 from recruits.serializers import RecruitSerializer, RecruitQuerySerializer, RecruitCreateBodySerializer
 
 class RecruitListView(APIView):
@@ -285,3 +287,63 @@ class RecruitView(APIView):
 
         except Recruit.DoesNotExist:
             return JsonResponse({"message": "NOT_FOUND"}, status=404)
+
+#어드민 페이지 대시보드
+class AdminPageView(APIView):
+    parameter_token = openapi.Parameter (
+                                        "Authorization", 
+                                        openapi.IN_HEADER, 
+                                        description = "access_token", 
+                                        type        = openapi.TYPE_STRING,
+                                        default     = ADMIN_TOKEN
+    )
+
+    recruits_get_response = openapi.Response("results", RecruitSerializer)
+
+    @swagger_auto_schema(
+        query_serializer = RecruitQuerySerializer,
+        responses = {
+            "200": recruits_get_response,
+            "404": "NOT_FOUND"
+        },
+        operation_id = "어드민페이지 대시보드",
+        operation_description = "어드민페이지의 각종 정보를 숫자로 표시합니다.\n" +
+                                "오늘의 지원자, 진행중 공고, 새로 등록된 공고, 곧 마감될 공고\n" +
+                                "sort    : create_at , deadline \n" 
+    )
+
+    @admin_only
+    def get(self, request, recruit_id):
+        recruit = Recruit.objects.get(id=recruit_id)
+
+        # 날짜 기준
+        today          = date.today()
+        before_one_day = today - timedelta(days=1)
+        before_weeks   = today - timedelta(weeks=1) 
+        after_weeks    = today + timedelta(weeks=1)
+
+        #오늘의 지원자
+        applicant       = Application.objects.values_list("created_at", flat=True).distinct()
+        today_applicant = [a for a in applicant if a >= before_one_day]
+        today           = Counter(today_applicant)                  
+
+        #진행중공고
+        progress_recruit = recruit.deadline >= today
+        progress         = Counter('progress_recruit')
+
+        #새로 등록된 공고
+        new_recruit = recruit.created_at >= before_weeks
+        new         = Counter('new_recruit')
+        
+        #마감 임박 공고
+        deadline_recruit = recruit.deadline >= after_weeks
+        dead             = Counter('deadline_recruit')
+      
+        results = {
+                "today_applicant"  : today[today_applicant],
+                "progress_recruit" : progress[progress_recruit],
+                "new_recruit"      : new[new_recruit],
+                "deadline_recruit" : dead[deadline_recruit]
+            }
+ 
+        return JsonResponse({"results": results}, status=200)            
