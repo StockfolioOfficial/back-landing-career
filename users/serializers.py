@@ -32,3 +32,12 @@ class ChangePasswordSerializer(serializers.Serializer):
     email        = serializers.EmailField()
     code         = serializers.CharField()
     new_password = serializers.CharField()
+
+class SuperadminGetSerializer(serializers.ModelSerializer):
+    class Meta:
+        model  = User
+        fields = ['email', 'created_at', 'updated_at']
+
+class SuperadminPatchSerializer(serializers.Serializer):
+    new_password       = serializers.CharField()
+    new_password_check = serializers.CharField()
