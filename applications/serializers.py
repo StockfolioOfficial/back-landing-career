@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from applications.models import Application
+from applications.models import Application, Comment
 
 class ApplicationSerializer(serializers.Serializer):
     content   = serializers.JSONField()
@@ -19,3 +19,4 @@ class ApplicationAdminPatchSerializer(serializers.ModelSerializer):
 class CommentAdminSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
+        fields = ['score','description']

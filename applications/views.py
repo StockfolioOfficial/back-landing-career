@@ -13,8 +13,8 @@ from rest_framework.views import APIView
 from core.decorators          import login_required, admin_only
 from global_variable          import ADMIN_TOKEN, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
 from recruits.models          import Recruit
-from applications.models      import Application, Attachment
-from applications.serializers import ApplicationSerializer, ApplicationAdminSerializer, ApplicationAdminPatchSerializer
+from applications.models      import Application, Attachment, Comment
+from applications.serializers import ApplicationSerializer, ApplicationAdminSerializer, ApplicationAdminPatchSerializer, CommentAdminSerializer
 
 class ApplicationView(APIView):
     parameter_token = openapi.Parameter (
@@ -82,8 +82,7 @@ class ApplicationView(APIView):
         try:
             user    = request.user
             recruit = Recruit.objects.get(id=recruit_id)
-            content = request.POST['content']
-            content  = json.loads(content)
+            content = json.loads(request.POST['content'])
             status  = "ST1"
 
             if recruit.applications.filter(user=user).exists():
@@ -399,7 +398,7 @@ class CommentAdminView(APIView):
             "400": "BAD_REQUEST",
             "401": "UNAUTHORIZED"
         },
-        operation_id = "(관리자 전용) 지원서 코멘트 조회",
+        operation_id = "(관리자 전용) 지원서 코멘트 및 평가 조회",
         operation_description = "header에 토큰이 필요합니다."
     )
 
@@ -420,12 +419,13 @@ class CommentAdminView(APIView):
     
     @swagger_auto_schema (
         manual_parameters = [parameter_token],
+        request_body= CommentAdminSerializer,
         responses = {
             "200": comment_admin_response,
             "400": "BAD_REQUEST",
             "401": "UNAUTHORIZED"
         },
-        operation_id = "(관리자 전용) 지원서 코멘트 생성",
+        operation_id = "(관리자 전용) 지원서 코멘트 및 평가 생성",
         operation_description = "header에 토큰이, body에 description과 score입력이 필요합니다.\n"
     )
 
@@ -434,19 +434,27 @@ class CommentAdminView(APIView):
         data = json.loads(request.body)
         application = Application.objects.get(id=application_id)
         
-        comment.Objects.create(
-            admin_id       = request.user.id,
+        Comment.objects.create(
+            user_id        = request.user.id,
             application_id = application.id,
-            description    = data['comment'],
+            description    = data['description'],
             score          = data['score'],  
         )
 
         return JsonResponse({'message': 'SUCCESS'}, status=200)
     
-
+class CommentAdminModifyView(APIView):
+    parameter_token = openapi.Parameter (
+                                        "Authorization", 
+                                        openapi.IN_HEADER, 
+                                        description = "access_token", 
+                                        type        = openapi.TYPE_STRING,
+                                        default     = ADMIN_TOKEN
+    )
+    comment_admin_response = openapi.Response("result", CommentAdminSerializer)
     @swagger_auto_schema (
         manual_parameters = [parameter_token],
-        request_body = ApplicationAdminPatchSerializer,
+        request_body = CommentAdminSerializer,
         responses = {
             "200": "SUCCESS",
             "400": "BAD_REQUEST",
@@ -459,17 +467,15 @@ class CommentAdminView(APIView):
     @admin_only
     def patch(self, request, application_id, comment_id): 
         try:
-            data = json.loads(request.body)
-            user = request.user
-            comments = Comment.objects.filter(application=application)
-            
-            if not request.user.id == comments.user_id:
+            data    = json.loads(request.body)
+            user    = request.user
+            comment = Comment.objects.get(id=comment_id)
+
+            if not user.id == comment.user_id:
                 return JsonResponse({'message': 'NOT_AUTHORIZED'}, status=403)
             
-            Comment.objects.get(id=comment_id, user_id = user.id).update(
-                admin_id       = request.user.id,
-                application_id = application.id,
-                description    = data['comment'],
+            Comment.objects.filter(id=comment_id).update(
+                description    = data['description'],
                 score          = data['score']
             )
             
@@ -480,7 +486,6 @@ class CommentAdminView(APIView):
     
     @swagger_auto_schema (
         manual_parameters = [parameter_token],
-        request_body = ApplicationAdminPatchSerializer,
         responses = {
             "200": "SUCCESS",
             "400": "BAD_REQUEST",
@@ -490,13 +495,15 @@ class CommentAdminView(APIView):
         operation_description = "header에 토큰이, body에 description과 score입력이 필요합니다.\n"
     )
     
-    @login_required
-    def delete(self, request, comment_id):
+    @admin_only
+    def delete(self, request, application_id, comment_id):
         try:
-            if not request.user.id == comments.user_id:
+            comment = Comment.objects.get(id=comment_id)
+
+            if not request.user.id == comment.user_id:
                 return JsonResponse({'message': 'NOT_AUTHORIZED'}, status=403)
 
-            Comment.objects.get(id= comment_id).delete()
+            comment.delete()
 
             return JsonResponse({"message": "SUCCESS"}, status=200)
 
