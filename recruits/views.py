@@ -106,7 +106,7 @@ class RecruitListView(APIView):
             author = request.user.email
 
             if not (career_type in career_type_choices):
-                return JsonResponse({"message": "INVALID_CAREER_TYPE"}, status=401)
+                return JsonResponse({"message": "INVALID_CAREER_TYPE"}, status=400)
 
             stacks = []
             
@@ -183,7 +183,7 @@ class RecruitView(APIView):
             return JsonResponse({"result": result}, status=200)
 
         except Recruit.DoesNotExist:
-            return JsonResponse({"message": "RECRUIT_NOT_EXISTS"}, status=404)
+            return JsonResponse({"message": "RECRUIT_NOT_FOUND"}, status=404)
 
     @swagger_auto_schema (
         manual_parameters = [parameter_token],
@@ -223,7 +223,7 @@ class RecruitView(APIView):
             author = request.user.email
 
             if not (career_type in career_type_choices):
-                return JsonResponse({"message": "NOT_CAREER_TYPE_CHOICE"}, status=400)
+                return JsonResponse({"message": "INVALID_CAREER_TYPE_CHOICE"}, status=400)
 
             stacks_to_add = []
             

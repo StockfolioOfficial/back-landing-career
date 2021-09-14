@@ -120,7 +120,7 @@ class VerificationView(APIView):
             email = data['email']
 
             if not User.objects.filter(email=email).exists():
-                return JsonResponse({'message': 'EMAIL_IS_NOT_EXISTS'}, status=404)
+                return JsonResponse({'message': 'EMAIL_IS_NOT_FOUND'}, status=404)
             
             code = binascii.hexlify(os.urandom(4)).decode()
 
