@@ -251,7 +251,7 @@ class UserMyPageView(APIView):
             return JsonResponse({"message": "PASSWORD_NULL"}, status=401)
 
         if not new_password == new_password_check:
-            return JsonResponse({"message": "PASSWORD_DOES_NOT_MATCH"}, status=401)
+            return JsonResponse({"message": "PASSWORD_CHECK_NOT_MATCH"}, status=401)
 
         if not validate_password(new_password):
             return JsonResponse({"message": "INVALID_PASSWORD"}, status=400)

@@ -223,7 +223,7 @@ class RecruitView(APIView):
             author = request.user.email
 
             if not (career_type in career_type_choices):
-                return JsonResponse({"message": "INVALID_CAREER_TYPE_CHOICE"}, status=400)
+                return JsonResponse({"message": "INVALID_CAREER_TYPE"}, status=400)
 
             stacks_to_add = []
             
