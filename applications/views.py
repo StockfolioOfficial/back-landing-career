@@ -57,9 +57,9 @@ class ApplicationView(APIView):
             return JsonResponse({"result": result}, status=200)
 
         except Recruit.DoesNotExist:
-            return JsonResponse({"message": "NOT_FOUND"}, status=404)
+            return JsonResponse({"message": "RECRUIT_NOT_FOUND"}, status=404)
         except Application.DoesNotExist:
-            return JsonResponse({"message": "NOT_FOUND"}, status=404)
+            return JsonResponse({"message": "APPLICATION_NOT_FOUND"}, status=404)
 
     @swagger_auto_schema (
         manual_parameters = [parameter_token, parameter_upload],
@@ -141,7 +141,7 @@ class ApplicationView(APIView):
             return JsonResponse({"message": "SUCCESS"}, status=201)
 
         except Recruit.DoesNotExist:
-            return JsonResponse({"message": "NOT_FOUND"}, status=404)
+            return JsonResponse({"message": "RECRUIT_NOT_FOUND"}, status=404)
         except KeyError:
             return JsonResponse({"message": "KEY_ERROR"}, status=400)
 
@@ -208,11 +208,11 @@ class ApplicationView(APIView):
             return JsonResponse({"message": "SUCCESS"}, status=200)
 
         except Recruit.DoesNotExist:
-            return JsonResponse({"message": "NOT_FOUND"}, status=404)
+            return JsonResponse({"message": "RECRUIT_NOT_FOUND"}, status=404)
         except Application.DoesNotExist:
-            return JsonResponse({"message": "NOT_FOUND"}, status=404)
+            return JsonResponse({"message": "APPLICATION_NOT_FOUND"}, status=404)
         except KeyError:
-            return JsonResponse({"message": "KEY_ERROR"}, status=400)    
+            return JsonResponse({"message": "KEY_ERROR"}, status=400)   
 
     @swagger_auto_schema (
         manual_parameters = [parameter_token],
@@ -237,9 +237,9 @@ class ApplicationView(APIView):
             return JsonResponse({"message": "SUCCESS"}, status=200)
 
         except Recruit.DoesNotExist:
-            return JsonResponse({"message": "NOT_FOUND"}, status=404)
+            return JsonResponse({"message": "RECRUIT_NOT_FOUND"}, status=404)
         except Application.DoesNotExist:
-            return JsonResponse({"message": "NOT_FOUND"}, status=404)
+            return JsonResponse({"message": "APPLICATION_NOT_FOUND"}, status=404)
 
 class ApplicationAdminView(APIView):
     parameter_token = openapi.Parameter (
@@ -373,4 +373,4 @@ class ApplicationAdminDetailView(APIView):
             return JsonResponse({'message': 'SUCCESS'}, status=200)
 
         except Application.DoesNotExist:
-            return JsonResponse({'message': 'NOT_FOUND'}, status=404)
+            return JsonResponse({'message': 'APPLICATION_NOT_FOUND'}, status=404)
