@@ -43,7 +43,7 @@ class SignupView(APIView):
             password_check = data['password_check'] 
             
             if password != password_check:
-                return JsonResponse({'message': 'BAD_REQUEST'}, status=400) 
+                return JsonResponse({'message': 'PASSWORD_CHECK_NOT_MATCH'}, status=400) 
 
             encoded_password = data['password'].encode('utf-8')
             hashed_password  = bcrypt.hashpw(encoded_password, bcrypt.gensalt())
@@ -77,7 +77,7 @@ class SigninView(APIView):
         recruit_id  = data.get('recruit_id')
 
         if not (validate_email(email) and validate_password(password)):
-            return JsonResponse({'message': 'BAD_REQUEST'}, status=400)          
+            return JsonResponse({'message': 'NO_VALID_EMAIL_OR_PASSWORD'}, status=400)          
 
         user, is_created = User.objects.get_or_create(email= email)
 
@@ -120,7 +120,7 @@ class VerificationView(APIView):
             email = data['email']
 
             if not User.objects.filter(email=email).exists():
-                return JsonResponse({'message': 'NOT_FOUND'}, status=404)
+                return JsonResponse({'message': 'EMAIL_IS_NOT_FOUND'}, status=404)
             
             code = binascii.hexlify(os.urandom(4)).decode()
 
@@ -190,9 +190,9 @@ class VerificationView(APIView):
             return JsonResponse({'message': 'SUCCESS'}, status=200)
 
         except User.DoesNotExist:
-            return JsonResponse({'message': 'NOT_FOUND'}, status=404)
+            return JsonResponse({'message': 'USER_NOT_FOUND'}, status=404)
         except UserTemp.DoesNotExist:
-            return JsonResponse({'message': 'NOT_FOUND'}, status=404)
+            return JsonResponse({'message': 'USER_NOT_FOUND'}, status=404)
         except KeyError:
             return JsonResponse({'message': 'KEY_ERROR'}, status=400)
 
@@ -248,10 +248,10 @@ class UserMyPageView(APIView):
         new_password_check = data["new_password_check"]
 
         if not (new_password and new_password_check):
-            return JsonResponse({"message": "KEY_ERROR"}, status=400)
+            return JsonResponse({"message": "PASSWORD_NULL"}, status=401)
 
         if not new_password == new_password_check:
-            return JsonResponse({"message": "BAD_REQUEST"}, status=400)
+            return JsonResponse({"message": "PASSWORD_CHECK_NOT_MATCH"}, status=401)
 
         if not validate_password(new_password):
             return JsonResponse({"message": "INVALID_PASSWORD"}, status=400)
