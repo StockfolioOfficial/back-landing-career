@@ -96,9 +96,9 @@ class SigninView(APIView):
         if bcrypt.checkpw(encoded_password, hashed_password):
             access_token = jwt.encode({'user_id': user.id, 'role': user.role}, SECRET_KEY, ALGORITHM)
             is_applied = Recruit.objects.get(id=recruit_id).applications.filter(user=user).exists() if recruit_id else None
-
+            print(access_token)
             return JsonResponse({'access_token': access_token, 'is_applied': is_applied}, status=200)
-
+            
         return JsonResponse({'message': 'INVALID_PASSWORD'}, status=400)            
 
 class VerificationView(APIView):

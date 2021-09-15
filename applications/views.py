@@ -1,7 +1,7 @@
 import boto3
 import json
 import uuid
-
+from datetime             import datetime
 from django.db.models     import Q
 from django.http          import JsonResponse
 from drf_yasg             import openapi
@@ -12,7 +12,7 @@ from rest_framework.views import APIView
 from core.decorators          import login_required, admin_only
 from global_variable          import ADMIN_TOKEN, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
 from recruits.models          import Recruit
-from applications.models      import Application, Attachment
+from applications.models      import Application, ApplicationAccessLog, Attachment
 from applications.serializers import ApplicationSerializer, ApplicationAdminSerializer, ApplicationAdminPatchSerializer
 
 class ApplicationView(APIView):
@@ -282,6 +282,9 @@ class ApplicationAdminView(APIView):
 
         applications = Application.objects.filter(q).order_by('-created_at')
 
+
+        log = ApplicationAccessLog.objects.filter(user=request.user, application_id___in=(application.id for application in applications)).all()
+
         results = [
             {
                 'content'       : application.content,
@@ -295,10 +298,10 @@ class ApplicationAdminView(APIView):
                 'career_type'   : [recruits.career_type for recruits in application.recruits.all()],
                 'position_title': [recruit.position_title for recruit in application.recruits.all()],
                 'position'      : [recruits.position for recruits in application.recruits.all()],
-                'deadline'      : [recruits.deadline for recruits in application.recruits.all()]
+                'deadline'      : [recruits.deadline for recruits in application.recruits.all()],
+                'new'           : not any(l for l in log if l.application_id == application.id),
             }
         for application in applications]
-
         return JsonResponse({'results': results}, status=200)
 
 class ApplicationAdminDetailView(APIView):
@@ -374,3 +377,52 @@ class ApplicationAdminDetailView(APIView):
 
         except Application.DoesNotExist:
             return JsonResponse({'message': 'APPLICATION_NOT_FOUND'}, status=404)
+
+
+# 어드민페이지 최근 지원자 뷰
+class ApplicatorAdminView(APIView):
+    parameter_token = openapi.Parameter (
+                                        "Authorization", 
+                                        openapi.IN_HEADER, 
+                                        description = "access_token", 
+                                        type        = openapi.TYPE_STRING,
+                                        default     = ADMIN_TOKEN
+    )
+   
+    application_admin_response = openapi.Response("result", ApplicationAdminSerializer)
+
+    @swagger_auto_schema (
+        manual_parameters = [parameter_token],
+        responses = {
+            "200": application_admin_response,
+            "400": "BAD_REQUEST",
+            "401": "UNAUTHORIZED"
+        },
+        operation_id = "어드민페이지 최근지원자뷰",
+        operation_description = "header에 토큰이 필요합니다." 
+        )
+
+    @admin_only
+    def get(self, request, application_id):  
+        application = Application.objects.get(id=application_id) 
+        recruit     = Recruit.objects.values_list("position_title")
+
+        for i in application:
+            totalDays   =  [datetime.strptime(application.content['career'][i]['leavingDate'],'%Y/%m/%d') \
+                        - datetime.strptime(application.content['career'][i]['joinDate'],'%Y/%m/%d')]\
+
+        years  = str(totalDays.days//365)
+        months = str((totalDays.days%365)//30)
+
+        results = {
+            "user_id"           : application.user.id,
+            "user_name"         : application.user.name,
+            "user_email"        : application.user.email,
+            "user_phoneNumber"  : application.user.phoneNumber,
+            "position_title"    : recruit.position_title,
+            "career_type"       : recruit.career_type,
+            "career"            : years + "년" + months + "개월",
+
+        }
+        ApplicationAccessLog.objects.create(blah)
+        return JsonResponse({'results': results}, status=200)            
