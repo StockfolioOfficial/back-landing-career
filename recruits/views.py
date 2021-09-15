@@ -1,6 +1,6 @@
-import json, sys, hashlib, sha3, itertools
+import json, sys, hashlib, sha3, itertools, datetime
 from os import access
-from datetime     import date, timedelta
+from datetime     import date, datetime, timedelta
 from django.http  import JsonResponse
 from typing       import Counter
 from rest_framework.views import APIView
@@ -297,12 +297,10 @@ class AdminPageView(APIView):
                                         type        = openapi.TYPE_STRING,
                                         default     = ADMIN_TOKEN
     )
-
-
-
     recruits_get_response = openapi.Response("results", RecruitSerializer)
 
     @swagger_auto_schema(
+        manual_parameters = [parameter_token],
         query_serializer = RecruitQuerySerializer,
         responses = {
             "200": recruits_get_response,
@@ -310,33 +308,34 @@ class AdminPageView(APIView):
         },
         operation_id = "어드민페이지 대시보드",
         operation_description = "어드민페이지의 각종 정보를 숫자로 표시합니다.\n" +
-                                "오늘의 지원자, 진행중 공고, 새로 등록된 공고, 곧 마감될 공고\n" +
-                                "sort    : create_at , deadline \n" 
+                                "오늘의 지원자, 진행중 공고, 새로 등록된 공고, 곧 마감될 공고\n" 
     ) 
     
-
     @admin_only
-    def get(self, request, recruit_id):
+    def get(self, request):
         try: 
-            recruit = Recruit.objects.get(id=recruit_id)
+            recruit = Recruit.objects.all()
             
             # 날짜 기준
-            today          = date.today()
-            before_one_day = today - timedelta(days=1)
-            before_weeks   = today - timedelta(weeks=1) 
-            after_weeks    = today + timedelta(weeks=1)
+            today_standard = datetime.datetime.now()
+            today_strpt    = date.today()
+            before_day     = today_standard - timedelta(days=1)
+            before_weeks   = today_standard - timedelta(weeks=1) 
+            after_weeks    = today_standard + timedelta(weeks=1)
 
             #오늘의 지원자
             applicant       = Application.objects.values_list("created_at", flat=True).distinct()
-            today_applicant = [a for a in applicant if a >= before_one_day]
-            today           = Counter(today_applicant)                  
+            today_applicant = [a for a in applicant if a >= before_day]       
 
             #진행중공고
-            progress_recruit = recruit.deadline >= today
-            progress         = Counter('progress_recruit')
+            progress_start_date = today_strpt
+            progress_end_date = recruit.deadline
+            progress_recruit = [(progress_start_date + timedelta(days=i)).strftime("%Y-%m-%d") 
+                        for i in range((progress_end_date-progress_start_date).days+1)] 
 
             #새로 등록된 공고
-            new_recruit = recruit.created_at >= before_weeks
+            recruit_new = Recruit.objects.values_list("created_at")
+            new_recruit = recruit.created_at <= before_weeks
             new         = Counter('new_recruit')
 
             #마감 임박 공고
@@ -344,9 +343,8 @@ class AdminPageView(APIView):
             dead             = Counter('deadline_recruit')
 
             results = {
-                    "recruit_id"       : recruit.id,
-                    "today_applicant"  : today[today_applicant],
-                    "progress_recruit" : progress[progress_recruit],
+                    "today_applicant"  : len(today_applicant),
+                    "progress_recruit" : len(progress_recruit),
                     "new_recruit"      : new[new_recruit],
                     "deadline_recruit" : dead[deadline_recruit]
                 }
@@ -465,7 +463,7 @@ class AdminPageRecruitView(APIView):
                 "career_type"         : recruit.get_career_type_display(),
                 "job_openings"        : recruit.job_openings,
                 "deadline"            : recruit.deadline,
-                "recruit_application" : recruit_id_list
+                "recruit_application" : len(recruit_id_list)
             }
             for recruit in recruits
         ]
