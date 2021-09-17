@@ -347,6 +347,8 @@ class RecruitView(APIView):
 
 
 
+
+
 # 어드민 페이지 공고 조회 (직무별 / 최신순)
 class AdminRecruitListView(APIView):
     parameter_token = openapi.Parameter (
@@ -360,13 +362,14 @@ class AdminRecruitListView(APIView):
     recruits_get_response = openapi.Response("results", RecruitSerializer)
 
     @swagger_auto_schema(
+        manual_parameters = [parameter_token],
         query_serializer = RecruitQuerySerializer,
         responses = {
             "200": recruits_get_response,
             "404": "NOT_FOUND"
         },
         operation_id = "어드민 전용 채용공고 목록 조회",
-        operation_description = "채용공고 목록을 조회합니다. 직무별, 최신순으로 공고 정렬 \n" +
+        operation_description = "채용공고 목록을 조회합니다. 직무별, 최신순으로 공고 정렬, 공고별 지원자수 \n" +
                                 "position_title: developer, designer, ..\n" +
                                 "sort    : deadline-ascend, salary-descend\n" +
                                 "DEFAULT : 모든 포지션, 최신순"
@@ -375,7 +378,7 @@ class AdminRecruitListView(APIView):
     def get(self, request):
         position_title = request.GET.get("position_title", "")
         sort           = request.GET.get("sort", "created-descend")
-
+        print()
         sort_dict = {
             "created-descend" : "-created_at",
         }
@@ -384,14 +387,6 @@ class AdminRecruitListView(APIView):
                                     .order_by(sort_dict[sort], '-created_at')
                     )
 
-        # 공고별 지원자 수 구하기
-        recruit_id  = Recruit.objects.values_list("id")
-        a = []
-        [{a.append(list(item))} for item in recruit_id]
-        recruit_id_list = list(itertools.chain.from_iterable(a))
-        for i in recruit_id_list:
-            RecruitApplication.objects.filter(recruit_id=i).count()
-         
         results = [
             {
                 "id"                  : recruit.id,
@@ -401,7 +396,7 @@ class AdminRecruitListView(APIView):
                 "career_type"         : recruit.get_career_type_display(),
                 "job_openings"        : recruit.job_openings,
                 "deadline"            : recruit.deadline,
-                "recruit_application" : recruit_id_list
+                "recruit_application" : Application.objects.filter(recruits=Recruit.objects.get(id=recruit.id)).count()
             }
             for recruit in recruits
         ]
@@ -420,13 +415,14 @@ class AdminPageRecruitView(APIView):
     recruits_get_response = openapi.Response("results", RecruitSerializer)
 
     @swagger_auto_schema(
+        manual_parameters = [parameter_token],
         query_serializer = RecruitQuerySerializer,
         responses = {
             "200": recruits_get_response,
             "404": "NOT_FOUND"
         },
         operation_id = "어드민페이지 채용공고 목록 조회",
-        operation_description = "채용공고 목록을 조회합니다. 최신순으로 공고 정렬 \n" +
+        operation_description = "채용공고 목록을 조회합니다. 최신순으로 공고 정렬, 공고별 지원자 수\n" +
                                 "sort    : deadline-ascend, salary-descend\n" +
                                 "DEFAULT : 모든 포지션, 최신순"
     )
@@ -438,15 +434,6 @@ class AdminPageRecruitView(APIView):
             "created-descend" : "-created_at",
         }
         recruits = Recruit.objects.order_by(sort_dict[sort], '-created_at')
-                    
-        # 공고별 지원자 수 구하기
-        recruit_id  = Recruit.objects.values_list("id")
-        a = []
-        [{a.append(list(item))} for item in recruit_id]
-        recruit_id_list = list(itertools.chain.from_iterable(a))
-        for i in recruit_id_list:
-            RecruitApplication.objects.filter(recruit_id=i).count()
-        
         results = [
             {
                 "id"                  : recruit.id,
@@ -456,7 +443,7 @@ class AdminPageRecruitView(APIView):
                 "career_type"         : recruit.get_career_type_display(),
                 "job_openings"        : recruit.job_openings,
                 "deadline"            : recruit.deadline,
-                "recruit_application" : recruit_id_list
+                "recruit_application" : Application.objects.filter(recruits=Recruit.objects.get(id=recruit.id)).count()
             }
             for recruit in recruits
         ]
