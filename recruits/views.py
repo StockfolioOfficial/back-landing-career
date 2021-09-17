@@ -1,5 +1,5 @@
-import json, sys, hashlib, sha3
-from datetime     import date,timedelta
+import json, sys, hashlib, sha3, datetime
+from datetime     import datetime,timedelta
 from django.http  import JsonResponse
 from typing       import Counter
 
@@ -289,7 +289,7 @@ class RecruitView(APIView):
             return JsonResponse({"message": "NOT_FOUND"}, status=404)
 
 #어드민 페이지 대시보드
-class AdminPageView(APIView):
+class AdmipageDashboardView(APIView):
     parameter_token = openapi.Parameter (
                                         "Authorization", 
                                         openapi.IN_HEADER, 
@@ -297,10 +297,10 @@ class AdminPageView(APIView):
                                         type        = openapi.TYPE_STRING,
                                         default     = ADMIN_TOKEN
     )
-
     recruits_get_response = openapi.Response("results", RecruitSerializer)
 
     @swagger_auto_schema(
+        manual_parameters = [parameter_token],
         query_serializer = RecruitQuerySerializer,
         responses = {
             "200": recruits_get_response,
@@ -308,42 +308,41 @@ class AdminPageView(APIView):
         },
         operation_id = "어드민페이지 대시보드",
         operation_description = "어드민페이지의 각종 정보를 숫자로 표시합니다.\n" +
-                                "오늘의 지원자, 진행중 공고, 새로 등록된 공고, 곧 마감될 공고\n" +
-                                "sort    : create_at , deadline \n" 
-    )
-
+                                "오늘의 지원자, 진행중 공고, 새로 등록된 공고, 곧 마감될 공고\n" 
+    ) 
+    
     @admin_only
-    def get(self, request, recruit_id):
-        recruit = Recruit.objects.get(id=recruit_id)
+    def get(self, request):
+        try: 
+            recruit = Recruit.objects.all()
+            
+            # 날짜 기준
+            today_standard = datetime.now()
+            before_day     = today_standard - timedelta(days=1)
+            before_weeks   = today_standard - timedelta(weeks=1) 
+            after_weeks    = today_standard + timedelta(weeks=1)
 
-        # 날짜 기준
-        today          = date.today()
-        before_one_day = today - timedelta(days=1)
-        before_weeks   = today - timedelta(weeks=1) 
-        after_weeks    = today + timedelta(weeks=1)
+            #오늘의 지원자
+            applicant       = Application.objects.values_list("created_at", flat=True).distinct()
+            today_applicant = [a for a in applicant if a >= before_day]       
 
-        #오늘의 지원자
-        applicant       = Application.objects.values_list("created_at", flat=True).distinct()
-        today_applicant = [a for a in applicant if a >= before_one_day]
-        today           = Counter(today_applicant)                  
+            #진행중공고
+            progress = Recruit.objects.filter(deadline__gte=datetime.now())
+            
+            #새로 등록된 공고
+            new_progress = Recruit.objects.filter(created_at__range=[before_weeks,today_standard])
 
-        #진행중공고
-        progress_recruit = recruit.deadline >= today
-        progress         = Counter('progress_recruit')
+            #마감 임박 공고
+            deadline_progress = Recruit.objects.filter(deadline__range=[after_weeks,today_standard])
 
-        #새로 등록된 공고
-        new_recruit = recruit.created_at >= before_weeks
-        new         = Counter('new_recruit')
-        
-        #마감 임박 공고
-        deadline_recruit = recruit.deadline >= after_weeks
-        dead             = Counter('deadline_recruit')
-      
-        results = {
-                "today_applicant"  : today[today_applicant],
-                "progress_recruit" : progress[progress_recruit],
-                "new_recruit"      : new[new_recruit],
-                "deadline_recruit" : dead[deadline_recruit]
-            }
- 
-        return JsonResponse({"results": results}, status=200)            
+            results = {
+                    "today_applicant"  : len(today_applicant),
+                    "progress_recruit" : progress.count(),
+                    "new_recruit"      : new_progress.count(),
+                    "deadline_recruit" : deadline_progress.count()
+                }
+            
+            return JsonResponse({"results": results}, status=200)
+
+        except Recruit.DoesNotExist:
+            return JsonResponse({"message": "RECRUIT_NOT_FOUND"}, status=404)    
