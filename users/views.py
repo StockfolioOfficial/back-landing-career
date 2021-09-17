@@ -286,16 +286,15 @@ class SuperAdminView(APIView):
     )
     @superadmin_only
     def get(self, request):    
-        admins = User.objects.filter(role='admin').all() 
 
         result = [{
             "id"        : admin.id,
             "email"     : admin.email,
-            "name"      : admin.email.split('@')[0],
+            "username"  : admin.name if admin.name else admin.email.split('@')[0],
             "created_at": admin.created_at,
             "updated_at": admin.updated_at,
             "password"  : "**********"
-        } for admin in admins]
+        } for admin in User.objects.filter(role='admin')]
 
         return JsonResponse({"result": result}, status=200)
     
@@ -325,19 +324,14 @@ class SuperAdminView(APIView):
             if not validate_password(data['password']):
                 return JsonResponse({'message': 'INVALID_PASSWORD_FORMAT'}, status=400)
             
-            password       = data['password']
-            password_check = data['password_check'] 
-            
-            if password != password_check:
-                return JsonResponse({'message': 'BAD_REQUEST'}, status=400) 
-
             encoded_password = data['password'].encode('utf-8')
             hashed_password  = bcrypt.hashpw(encoded_password, bcrypt.gensalt())
             
             User.objects.create(
                 email    = data['email'],
                 password = hashed_password.decode('utf-8'),
-                role     = 'admin'
+                role     = 'admin',
+                name     = data['username']
             )
 
             return JsonResponse({"message": "SUCCESS"}, status=200)
@@ -369,14 +363,9 @@ class SuperAdminModifyView(APIView):
         user = User.objects.get(id=user_id)
         data = json.loads(request.body)
 
-        new_password       = data["new_password"]
-        new_password_check = data["new_password_check"]
-
-        if not (new_password and new_password_check):
-            return JsonResponse({"message": "KEY_ERROR"}, status=400)
-
-        if not new_password == new_password_check:
-            return JsonResponse({"message": "BAD_REQUEST"}, status=400)
+        new_name           = data.get('newname')
+        new_email          = data.get('newemail')
+        new_password       = data.get('newpassword')
 
         if not validate_password(new_password):
             return JsonResponse({"message": "INVALID_PASSWORD"}, status=400)
@@ -385,6 +374,12 @@ class SuperAdminModifyView(APIView):
         hashed_new_password  = bcrypt.hashpw(encoded_new_password, bcrypt.gensalt()).decode('utf-8')
 
         user.password = hashed_new_password
+        if new_name:
+            user.name = new_name 
+        if new_email:
+            user.email = new_email
+        if new_password:
+            user.password = new_password 
         user.save()
 
         return JsonResponse({"message": "SUCCESS"}, status=200)
