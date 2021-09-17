@@ -39,5 +39,6 @@ class SuperadminGetSerializer(serializers.ModelSerializer):
         fields = ['email', 'created_at', 'updated_at']
 
 class SuperadminPatchSerializer(serializers.Serializer):
-    new_password       = serializers.CharField()
-    new_password_check = serializers.CharField()
+    new_name     = serializers.CharField()
+    new_email    = serializers.CharField()
+    new_password = serializers.CharField()

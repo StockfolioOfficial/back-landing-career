@@ -50,7 +50,8 @@ class SignupView(APIView):
             
             user = User.objects.create(
                 email    = data['email'],
-                password = hashed_password.decode('utf-8')
+                password = hashed_password.decode('utf-8'),
+                user_name  = data.get('name') if data.get('name') else email.split('@')[0]
             )
 
             access_token = jwt.encode({'user_id': user.id, 'role': user.role}, SECRET_KEY, ALGORITHM)
@@ -71,10 +72,10 @@ class SigninView(APIView):
         operation_description = "이메일과 비밀번호 입력이 필요합니다."
     )
     def post(self, request):
-        data     = json.loads(request.body)
-        email    = data['email']
-        password = data['password']
-        recruit_id  = data.get('recruit_id')
+        data       = json.loads(request.body)
+        email      = data['email']
+        password   = data['password']
+        recruit_id = data.get('recruit_id')
 
         if not (validate_email(email) and validate_password(password)):
             return JsonResponse({'message': 'BAD_REQUEST'}, status=400)          
@@ -87,8 +88,9 @@ class SigninView(APIView):
             user.save()
 
             access_token = jwt.encode({'user_id': user.id, 'role': user.role}, SECRET_KEY, ALGORITHM)
+            user_name  = user.name if user.name else email.split('@')[0]
 
-            return JsonResponse({'access_token': access_token, 'is_applied': None}, status=200)
+            return JsonResponse({'access_token': access_token, 'is_applied': None, 'user_name' : user_name}, status=200)
         
         encoded_password = password.encode('utf-8')
         hashed_password  = user.password.encode('utf-8')
@@ -96,8 +98,9 @@ class SigninView(APIView):
         if bcrypt.checkpw(encoded_password, hashed_password):
             access_token = jwt.encode({'user_id': user.id, 'role': user.role}, SECRET_KEY, ALGORITHM)
             is_applied = Recruit.objects.get(id=recruit_id).applications.filter(user=user).exists() if recruit_id else None
+            user_name  = user.name if user.name else email.split('@')[0]
 
-            return JsonResponse({'access_token': access_token, 'is_applied': is_applied}, status=200)
+            return JsonResponse({'access_token': access_token, 'is_applied': is_applied, 'user_name' : user_name}, status=200)
 
         return JsonResponse({'message': 'INVALID_PASSWORD'}, status=400)            
 
@@ -293,8 +296,8 @@ class SuperAdminView(APIView):
             "username"  : admin.name if admin.name else admin.email.split('@')[0],
             "created_at": admin.created_at,
             "updated_at": admin.updated_at,
-            "password"  : "**********"
-        } for admin in User.objects.filter(role='admin')]
+            "password"  : '********'
+        } for admin in User.objects.filter(role='admin', is_deleted=False)]
 
         return JsonResponse({"result": result}, status=200)
     
@@ -367,6 +370,9 @@ class SuperAdminModifyView(APIView):
         new_email          = data.get('newemail')
         new_password       = data.get('newpassword')
 
+        user.name = new_name if new_name else user.name
+        user.email = new_email if new_email else user.email
+
         if not validate_password(new_password):
             return JsonResponse({"message": "INVALID_PASSWORD"}, status=400)
 
@@ -374,12 +380,6 @@ class SuperAdminModifyView(APIView):
         hashed_new_password  = bcrypt.hashpw(encoded_new_password, bcrypt.gensalt()).decode('utf-8')
 
         user.password = hashed_new_password
-        if new_name:
-            user.name = new_name 
-        if new_email:
-            user.email = new_email
-        if new_password:
-            user.password = new_password 
         user.save()
 
         return JsonResponse({"message": "SUCCESS"}, status=200)
