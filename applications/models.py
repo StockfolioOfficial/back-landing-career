@@ -1,3 +1,4 @@
+from recruits.models import Recruit
 from django.db import models
 
 from core.models import TimeStampModel
@@ -15,6 +16,7 @@ class Application(TimeStampModel):
     user    = models.ForeignKey('users.User', on_delete=models.CASCADE)
     status  = models.CharField(max_length=3, choices=STATUS_CHOICES, default='ST1')
 
+
     class Meta:
         db_table = 'applications'
 
@@ -24,3 +26,8 @@ class Attachment(models.Model):
 
     class Meta:
         db_table = 'attachments'
+
+class ApplicationAccessLog(models.Model):
+    user        = models.ForeignKey('users.User', on_delete=models.CASCADE)
+    application = models.ForeignKey('Application', on_delete=models.CASCADE)
+    log_at      = models.DateTimeField(auto_now_add=True)        
