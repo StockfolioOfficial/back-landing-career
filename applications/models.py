@@ -15,7 +15,7 @@ class Application(TimeStampModel):
     content = models.JSONField(null=False)
     user    = models.ForeignKey('users.User', on_delete=models.CASCADE)
     status  = models.CharField(max_length=3, choices=STATUS_CHOICES, default='ST1')
-
+    
 
     class Meta:
         db_table = 'applications'

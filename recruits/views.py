@@ -1,15 +1,17 @@
-import json, sys, hashlib, sha3
-
+import json, sys, hashlib, sha3, datetime
+from datetime     import datetime,timedelta
 from django.http  import JsonResponse
+from typing       import Counter
 
 from rest_framework.views import APIView
 
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg       import openapi
 
-from global_variable import ADMIN_TOKEN
-from recruits.models import Recruit, Stack, RecruitStack
-from core.decorators import admin_only
+from global_variable      import ADMIN_TOKEN
+from recruits.models      import Recruit, Stack, RecruitStack
+from applications.models  import Application
+from core.decorators      import admin_only
 from recruits.serializers import RecruitSerializer, RecruitQuerySerializer, RecruitCreateBodySerializer
 
 class RecruitListView(APIView):
@@ -284,4 +286,64 @@ class RecruitView(APIView):
             return JsonResponse({"meessage": "SUCCESS"}, status=200)
 
         except Recruit.DoesNotExist:
-            return JsonResponse({"message": "RECRUIT_NOT_FOUND"}, status=404)
+            return JsonResponse({"message": "NOT_FOUND"}, status=404)
+
+#어드민 페이지 대시보드
+class AdmipageDashboardView(APIView):
+    parameter_token = openapi.Parameter (
+                                        "Authorization", 
+                                        openapi.IN_HEADER, 
+                                        description = "access_token", 
+                                        type        = openapi.TYPE_STRING,
+                                        default     = ADMIN_TOKEN
+    )
+    recruits_get_response = openapi.Response("results", RecruitSerializer)
+
+    @swagger_auto_schema(
+        manual_parameters = [parameter_token],
+        query_serializer = RecruitQuerySerializer,
+        responses = {
+            "200": recruits_get_response,
+            "404": "NOT_FOUND"
+        },
+        operation_id = "어드민페이지 대시보드",
+        operation_description = "어드민페이지의 각종 정보를 숫자로 표시합니다.\n" +
+                                "오늘의 지원자, 진행중 공고, 새로 등록된 공고, 곧 마감될 공고\n" 
+    ) 
+    
+    @admin_only
+    def get(self, request):
+        try: 
+            recruit = Recruit.objects.all()
+            
+            # 날짜 기준
+            today_standard = datetime.now()
+            before_day     = today_standard - timedelta(days=1)
+            before_weeks   = today_standard - timedelta(weeks=1) 
+            after_weeks    = today_standard + timedelta(weeks=1)
+
+            #오늘의 지원자
+            applicant       = Application.objects.values_list("created_at", flat=True).distinct()
+            today_applicant = [a for a in applicant if a >= before_day]       
+
+            #진행중공고
+            progress = Recruit.objects.filter(deadline__gte=datetime.now())
+            
+            #새로 등록된 공고
+            new_progress = Recruit.objects.filter(created_at__range=[before_weeks,today_standard])
+
+            #마감 임박 공고
+            deadline_progress = Recruit.objects.filter(deadline__range=[after_weeks,today_standard])
+
+            results = {
+                    "today_applicant"  : len(today_applicant),
+                    "progress_recruit" : progress.count(),
+                    "new_recruit"      : new_progress.count(),
+                    "deadline_recruit" : deadline_progress.count()
+                }
+            
+            return JsonResponse({"results": results}, status=200)
+
+        except Recruit.DoesNotExist:
+            return JsonResponse({"message": "RECRUIT_NOT_FOUND"}, status=404)    
+

@@ -403,41 +403,32 @@ class ApplicatorAdminView(APIView):
 
     @admin_only
     def get(self, request):
-        career_type       = request.GET.get('career_type', None)
-        position_title    = request.GET.get('position', None)
-        status            = request.GET.get('status', None)
-
-        q = Q()
-
-        if career_type:
-            q.add(Q(recruits__career_type = career_type), q.AND)
         
-        if position_title:
-            q.add(Q(recruits__position_title = position_title), q.AND)
-
-        if status:
-            q.add(Q(status = status), q.AND)
-
-        applications = Application.objects.filter(q).order_by('-created_at') 
+        applications = Application.objects.order_by('-created_at') 
         application = Application.objects.all()
         log = ApplicationAccessLog.objects.filter(user=request.user, application__in=(application.id for application in applications)).all()
 
         # for i in application:
-        #     totalDays   =  [datetime.strptime(application.content['career'][i]['leavingDate'],'%Y/%m/%d') \
-        #                 - datetime.strptime(application.content['career'][i]['joinDate'],'%Y/%m/%d')]\
+        #     for application in applications:
+        #         application = application.content
+        #         totalDays   = application.content['career'][i]['leavingDate'] - application.content['career'][i]['joinDate']
+               
+        #         #  datetime.strptime(application.content['career'][i]['leavingDate'],'%Y/%m/%d') \
+        #                 #  - datetime.strptime(application.content['career'][i]['joinDate'],'%Y/%m/%d')\
 
-        # years  = str(totalDays.days//365)
-        # months = str((totalDays.days%365)//30)
+        #         years  = str(totalDays.days//365)
+        #         months = str((totalDays.days%365)//30)
 
         results = [{
             "created_at"        : application.created_at,
+            #"content"           : application.content,
             "new"               : not any(l for l in log if l.application_id == application.id),
             "user_name"         : application.user.name if application.user.name else application.user.email.split('@')[0],
             "user_email"        : application.user.email,
             "user_phoneNumber"  : application.content['basicInfo']['phoneNumber'],
             "position_title"    : [recruits.position_title for recruits in application.recruits.all()],
-            "career_type"       : [recruits.career_type for recruits in application.recruits.all()],
-            
+            "career_type"       : [recruit.get_career_type_display() for recruit in application.recruits.all()],
+           
             # "career"          : years + "년" + months + "개월",
         } for application in applications]
 
@@ -469,40 +460,20 @@ class RecruitApplicatorView(APIView):
 
     @admin_only
     def get(self, request,recruit_id):
-        career_type       = request.GET.get('career_type', None)
-        position_title    = request.GET.get('position', None)
-        status            = request.GET.get('status', None)
 
-        q = Q()
-
-        if career_type:
-            q.add(Q(recruits__career_type = career_type), q.AND)
-        
-        if position_title:
-            q.add(Q(recruits__position_title = position_title), q.AND)
-
-        if status:
-            q.add(Q(status = status), q.AND)
-
-        applications = Application.objects.filter(q).order_by('-created_at')
-        log = ApplicationAccessLog.objects.filter(user=request.user, application__in=(application.id for application in applications)).all()
-        
+        applications = Application.objects.filter(recruits=Recruit.objects.get(id=recruit_id)).order_by('-created_at')
+        log          = ApplicationAccessLog.objects.filter(user=request.user, application__in=(application.id for application in applications)).all()
+      
         results = [
             {
-                'recruit_id'    : recruit_id,
-                'content'       : application.content,
-                'status'        : application.status,
-                'created_at'    : application.created_at,
-                'updated_at'    : application.updated_at,
-                #'recruit_id'    : [recruits.id for recruits in application.recruits.all()],
-                'job_openings'  : [recruits.job_openings for recruits in application.recruits.all()],
-                'author'        : [recruits.author for recruits in application.recruits.all()],
-                'work_type'     : [recruits.work_type for recruits in application.recruits.all()],
-                'career_type'   : [recruits.career_type for recruits in application.recruits.all()],
-                'position_title': [recruit.position_title for recruit in application.recruits.all()],
-                'position'      : [recruits.position for recruits in application.recruits.all()],
-                'deadline'      : [recruits.deadline for recruits in application.recruits.all()],
-                'new'           : not any(l for l in log if l.application_id == application.id),
+                "recruit_id"        : recruit_id,
+                "created_at"        : application.created_at,
+                "user_name"         : application.user.name if application.user.name else application.user.email.split('@')[0],
+                "user_email"        : application.user.email,
+                "user_phoneNumber"  : application.content['basicInfo']['phoneNumber'],
+                'career_type'       : [recruit.get_career_type_display() for recruit in application.recruits.all()],
+                'position_title'    : [recruit.position_title for recruit in application.recruits.all()],
+                'new'               : not any(l for l in log if l.application_id == application.id),
             }
         for application in applications]
         return JsonResponse({'results': results}, status=200)
