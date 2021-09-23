@@ -13,6 +13,7 @@ from rest_framework.views import APIView
 from core.decorators          import login_required, admin_only
 from global_variable          import ADMIN_TOKEN, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
 from recruits.models          import Recruit
+from users.models             import User
 from applications.models      import Application, Attachment, Comment
 from applications.serializers import ApplicationSerializer, ApplicationAdminSerializer, ApplicationAdminPatchSerializer, CommentAdminSerializer
 
@@ -341,14 +342,14 @@ class ApplicationAdminDetailView(APIView):
                 'updated_at'    : application.updated_at,
                 'user_id'       : application.user.id,
                 'user_email'    : application.user.email,
-                'recruit_id'    : [recruits.id for recruits in application.recruits.all()],
-                'job_openings'  : [recruits.job_openings for recruits in application.recruits.all()],
-                'author'        : [recruits.author for recruits in application.recruits.all()],
-                'work_type'     : [recruits.work_type for recruits in application.recruits.all()],
+                'recruit_id'    : Recruit.objects.get(applications=application).id,
+                'job_openings'  : Recruit.objects.get(applications=application).job_openings,
+                'author'        : Recruit.objects.get(applications=application).author,
+                'work_type'     : Recruit.objects.get(applications=application).work_type,
                 'career_type'   : Recruit.objects.get(applications=application).get_career_type_display(),
-                'position_title': [recruits.position_title for recruits in application.recruits.all()],
-                'position'      : [recruits.position for recruits in application.recruits.all()],
-                'deadline'      : [recruits.deadline for recruits in application.recruits.all()]
+                'position_title': Recruit.objects.get(applications=application).position_title,
+                'position'      : Recruit.objects.get(applications=application).position,
+                'deadline'      : Recruit.objects.get(applications=application).deadline
             }
         ]
 
@@ -409,7 +410,7 @@ class CommentAdminView(APIView):
         results = {  
             'comments' : [{
                     'admin_id'   : comment.user_id,
-                    'admin_name' : comment.user.name,
+                    'admin_name' : User.objects.get(id=comment.user_id).name if User.objects.get(id=comment.user_id).name else User.objects.get(id=comment.user_id).email.split('@')[0],
                     'created_at' : comment.created_at,
                     'updated_at' : comment.updated_at,
                     'description': comment.description,
