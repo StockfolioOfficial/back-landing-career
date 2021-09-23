@@ -16,19 +16,19 @@ from applications.models      import Application, Attachment
 from applications.serializers import ApplicationSerializer, ApplicationAdminSerializer, ApplicationAdminPatchSerializer
 
 class CloudStorage:
-    def __init__(self, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, BUCKET_NAME):
-        self.AWS_ACCESS_KEY_ID = AWS_ACCESS_KEY_ID
-        self.AWS_SECRET_ACCESS_KEY = AWS_SECRET_ACCESS_KEY
-        self.BUCKET_NAME = BUCKET_NAME
+    AWS_ACCESS_KEY_ID = AWS_ACCESS_KEY_ID
+    AWS_SECRET_ACCESS_KEY = AWS_SECRET_ACCESS_KEY
+    BUCKET_NAME = BUCKET_NAME
+    def __init__(self):
         self.client = boto3.client(
                 's3',
-                aws_access_key_id     = AWS_ACCESS_KEY_ID,
-                aws_secret_access_key = AWS_SECRET_ACCESS_KEY,
+                aws_access_key_id     = self.AWS_ACCESS_KEY_ID,
+                aws_secret_access_key = self.AWS_SECRET_ACCESS_KEY,
             )
         self.resource = boto3.resource(
                 's3',
-                aws_access_key_id     = AWS_ACCESS_KEY_ID,
-                aws_secret_access_key = AWS_SECRET_ACCESS_KEY,
+                aws_access_key_id     = self.AWS_ACCESS_KEY_ID,
+                aws_secret_access_key = self.AWS_SECRET_ACCESS_KEY,
             )
 
     def upload_file(self, file):
@@ -111,7 +111,7 @@ class ApplicationView(APIView):
     
     @login_required
     def post(self, request, recruit_id):
-        cloud_storage = CloudStorage(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, BUCKET_NAME)
+        cloud_storage = CloudStorage()
         try:
             user    = request.user
             recruit = Recruit.objects.get(id=recruit_id)
@@ -164,7 +164,7 @@ class ApplicationView(APIView):
     
     @login_required
     def patch(self, request, recruit_id):
-        cloud_storage = CloudStorage(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, BUCKET_NAME)
+        cloud_storage = CloudStorage()
         try:
             user    = request.user
             file    = request.FILES
@@ -208,7 +208,7 @@ class ApplicationView(APIView):
     
     @login_required
     def delete(self, request, recruit_id):
-        cloud_storage = CloudStorage(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, BUCKET_NAME)
+        cloud_storage = CloudStorage()
         try:
             user        = request.user
             application = Recruit.objects.get(id=recruit_id).applications.get(user=user)
