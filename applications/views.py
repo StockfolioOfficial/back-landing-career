@@ -292,7 +292,7 @@ class ApplicationAdminView(APIView):
                 'job_openings'  : [recruits.job_openings for recruits in application.recruits.all()],
                 'author'        : [recruits.author for recruits in application.recruits.all()],
                 'work_type'     : [recruits.work_type for recruits in application.recruits.all()],
-                'career_type'   : [recruits.career_type for recruits in application.recruits.all()],
+                'career_type'   : [recruits.get_career_type_display() for recruits in application.recruits.all()],
                 'position_title': [recruit.position_title for recruit in application.recruits.all()],
                 'position'      : [recruits.position for recruits in application.recruits.all()],
                 'deadline'      : [recruits.deadline for recruits in application.recruits.all()]
@@ -345,7 +345,7 @@ class ApplicationAdminDetailView(APIView):
                 'job_openings'  : [recruits.job_openings for recruits in application.recruits.all()],
                 'author'        : [recruits.author for recruits in application.recruits.all()],
                 'work_type'     : [recruits.work_type for recruits in application.recruits.all()],
-                'career_type'   : [recruits.career_type for recruits in application.recruits.all()],
+                'career_type'   : Recruit.objects.get(applications=application).get_career_type_display(),
                 'position_title': [recruits.position_title for recruits in application.recruits.all()],
                 'position'      : [recruits.position for recruits in application.recruits.all()],
                 'deadline'      : [recruits.deadline for recruits in application.recruits.all()]
@@ -407,14 +407,15 @@ class CommentAdminView(APIView):
         application = Application.objects.get(id=application_id)
         
         results = {  
-            'comments' : {
+            'comments' : [{
                     'admin_id'   : comment.user_id,
+                    'admin_name' : comment.user.name,
                     'created_at' : comment.created_at,
                     'updated_at' : comment.updated_at,
                     'description': comment.description,
                     'score'      : comment.score  
-            } for comment in Comment.objects.filter(application=application)}
-
+            } for comment in Comment.objects.filter(application=application)]
+        }
         return JsonResponse({'results': results}, status=200)
     
     @swagger_auto_schema (
