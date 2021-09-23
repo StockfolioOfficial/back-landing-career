@@ -1,7 +1,7 @@
 from django.urls import path
 
 from applications.views import ApplicationView
-from recruits.views     import RecruitListView, RecruitView
+from recruits.views     import RecruitListView, RecruitView, RecruitAdminView
 
 urlpatterns = [
     path('', RecruitListView.as_view()),
