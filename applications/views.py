@@ -1,7 +1,6 @@
-import boto3
-import json
-import uuid
-from datetime             import datetime
+import boto3, json, uuid, time
+
+from datetime             import datetime, timedelta
 from django.db.models     import Q
 from django.http          import JsonResponse
 from drf_yasg             import openapi
@@ -240,7 +239,7 @@ class ApplicationView(APIView):
             return JsonResponse({"message": "RECRUIT_NOT_FOUND"}, status=404)
         except Application.DoesNotExist:
             return JsonResponse({"message": "APPLICATION_NOT_FOUND"}, status=404)
-# 어드민전용 지원자 목록 전체
+
 class ApplicationAdminView(APIView):
     parameter_token = openapi.Parameter (
                                         "Authorization",
@@ -259,7 +258,7 @@ class ApplicationAdminView(APIView):
             "400": "BAD_REQUEST",
             "401": "UNAUTHORIZED",
         },
-        operation_id = "(관리자 전용) 지원목록 조회",
+        operation_id = "(관리자 전용) 지원자 전체 목록 조회",
         operation_description = "header에 토큰이 필요합니다."
     )
 
@@ -298,7 +297,7 @@ class ApplicationAdminView(APIView):
                 'position_title': [recruit.position_title for recruit in application.recruits.all()],
                 'position'      : [recruits.position for recruits in application.recruits.all()],
                 'deadline'      : [recruits.deadline for recruits in application.recruits.all()],
-                'new'           : not any(l for l in log if l.application_id == application.id),
+                'new'           : ApplicationAccessLog.objects.filter(user_id=request.user.id, application_id=application.id).exists(),
             }
         for application in applications]
         return JsonResponse({'results': results}, status=200)
@@ -343,7 +342,7 @@ class ApplicationAdminDetailView(APIView):
                 'author'        : [recruits.author for recruits in application.recruits.all()],
                 'work_type'     : [recruits.work_type for recruits in application.recruits.all()],
                 'career_type'   : [recruits.career_type for recruits in application.recruits.all()],
-                'position_title': [recruits.position_type for recruits in application.recruits.all()],
+                'position_title': [recruits.position_title for recruits in application.recruits.all()],
                 'position'      : [recruits.position for recruits in application.recruits.all()],
                 'deadline'      : [recruits.deadline for recruits in application.recruits.all()]
             }
@@ -378,102 +377,3 @@ class ApplicationAdminDetailView(APIView):
             return JsonResponse({'message': 'APPLICATION_NOT_FOUND'}, status=404)
 
 
-# 어드민 공고별 지원자 리스트
-class ApplicatorAdminView(APIView):
-    parameter_token = openapi.Parameter (
-                                        "Authorization", 
-                                        openapi.IN_HEADER, 
-                                        description = "access_token", 
-                                        type        = openapi.TYPE_STRING,
-                                        default     = ADMIN_TOKEN
-    )
-   
-    application_admin_response = openapi.Response("result", ApplicationAdminSerializer)
-
-    @swagger_auto_schema (
-        manual_parameters = [parameter_token],
-        responses = {
-            "200": application_admin_response,
-            "400": "BAD_REQUEST",
-            "401": "UNAUTHORIZED"
-        },
-        operation_id = "어드민페이지 최근지원자뷰",
-        operation_description = "header에 토큰이 필요합니다." 
-    )
-
-    @admin_only
-    def get(self, request):
-        
-        applications = Application.objects.order_by('-created_at') 
-        application = Application.objects.all()
-        log = ApplicationAccessLog.objects.filter(user=request.user, application__in=(application.id for application in applications)).all()
-
-        # for i in application:
-        #     for application in applications:
-        #         application = application.content
-        #         totalDays   = application.content['career'][i]['leavingDate'] - application.content['career'][i]['joinDate']
-               
-        #         #  datetime.strptime(application.content['career'][i]['leavingDate'],'%Y/%m/%d') \
-        #                 #  - datetime.strptime(application.content['career'][i]['joinDate'],'%Y/%m/%d')\
-
-        #         years  = str(totalDays.days//365)
-        #         months = str((totalDays.days%365)//30)
-
-        results = [{
-            "created_at"        : application.created_at,
-            #"content"           : application.content,
-            "new"               : not any(l for l in log if l.application_id == application.id),
-            "user_name"         : application.user.name if application.user.name else application.user.email.split('@')[0],
-            "user_email"        : application.user.email,
-            "user_phoneNumber"  : application.content['basicInfo']['phoneNumber'],
-            "position_title"    : [recruits.position_title for recruits in application.recruits.all()],
-            "career_type"       : [recruit.get_career_type_display() for recruit in application.recruits.all()],
-           
-            # "career"          : years + "년" + months + "개월",
-        } for application in applications]
-
- 
-        return JsonResponse({'results': results}, status=200)            
-
-#어드민 특정 공고 지원자 뷰
-class RecruitApplicatorView(APIView):
-    parameter_token = openapi.Parameter (
-                                        "Authorization",
-                                        openapi.IN_HEADER,
-                                        description = "access_token", 
-                                        type        = openapi.TYPE_STRING,
-                                        default     = ADMIN_TOKEN
-    )
-    
-    application_admin_response = openapi.Response("result", ApplicationAdminSerializer)
-
-    @swagger_auto_schema (
-        manual_parameters = [parameter_token],
-        responses = {
-            "200": application_admin_response,
-            "400": "BAD_REQUEST",
-            "401": "UNAUTHORIZED",
-        },
-        operation_id = "(관리자 전용) 특정 공고의 지원자 목록 조회",
-        operation_description = "header에 토큰이 필요합니다."
-    )
-
-    @admin_only
-    def get(self, request,recruit_id):
-
-        applications = Application.objects.filter(recruits=Recruit.objects.get(id=recruit_id)).order_by('-created_at')
-        log          = ApplicationAccessLog.objects.filter(user=request.user, application__in=(application.id for application in applications)).all()
-      
-        results = [
-            {
-                "recruit_id"        : recruit_id,
-                "created_at"        : application.created_at,
-                "user_name"         : application.user.name if application.user.name else application.user.email.split('@')[0],
-                "user_email"        : application.user.email,
-                "user_phoneNumber"  : application.content['basicInfo']['phoneNumber'],
-                'career_type'       : [recruit.get_career_type_display() for recruit in application.recruits.all()],
-                'position_title'    : [recruit.position_title for recruit in application.recruits.all()],
-                'new'               : not any(l for l in log if l.application_id == application.id),
-            }
-        for application in applications]
-        return JsonResponse({'results': results}, status=200)
