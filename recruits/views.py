@@ -1,17 +1,18 @@
 import json, sys, hashlib, sha3, datetime
-from datetime     import datetime,timedelta
+
 from django.http  import JsonResponse
-from typing       import Counter
+from typing import Counter
+from datetime     import datetime,timedelta
 
 from rest_framework.views import APIView
-
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg       import openapi
 
-from global_variable      import ADMIN_TOKEN
-from recruits.models      import Recruit, Stack, RecruitStack
-from applications.models  import Application
-from core.decorators      import admin_only
+from global_variable import ADMIN_TOKEN
+from recruits.models import Recruit, Stack, RecruitStack
+from applications.models import Application
+from core.decorators import admin_only
+
 from recruits.serializers import RecruitSerializer, RecruitQuerySerializer, RecruitCreateBodySerializer
 
 class RecruitListView(APIView):
@@ -288,6 +289,7 @@ class RecruitView(APIView):
         except Recruit.DoesNotExist:
             return JsonResponse({"message": "NOT_FOUND"}, status=404)
 
+
 #어드민 페이지 대시보드
 class AdmipageDashboardView(APIView):
     parameter_token = openapi.Parameter (
@@ -310,7 +312,6 @@ class AdmipageDashboardView(APIView):
         operation_description = "어드민페이지의 각종 정보를 숫자로 표시합니다.\n" +
                                 "오늘의 지원자, 진행중 공고, 새로 등록된 공고, 곧 마감될 공고\n" 
     ) 
-    
     @admin_only
     def get(self, request):
         try: 
@@ -345,5 +346,107 @@ class AdmipageDashboardView(APIView):
             return JsonResponse({"results": results}, status=200)
 
         except Recruit.DoesNotExist:
-            return JsonResponse({"message": "RECRUIT_NOT_FOUND"}, status=404)    
+            return JsonResponse({"message": "RECRUIT_NOT_FOUND"}, status=404)  
+
+
+# 어드민 페이지 공고 조회 (직무별 / 최신순)
+class AdminRecruitListView(APIView):
+    parameter_token = openapi.Parameter (
+                                        "Authorization", 
+                                        openapi.IN_HEADER, 
+                                        description = "access_token", 
+                                        type        = openapi.TYPE_STRING,
+                                        default     = ADMIN_TOKEN
+    )
+    recruits_get_response = openapi.Response("results", RecruitSerializer)
+
+    @swagger_auto_schema(
+        manual_parameters = [parameter_token],
+        query_serializer = RecruitQuerySerializer,
+        responses = {
+            "200": recruits_get_response,
+            "404": "NOT_FOUND"
+        },
+        operation_id = "어드민 전용 채용공고 목록 조회",
+        operation_description = "채용공고 목록을 조회합니다. 직무별, 최신순으로 공고 정렬, 공고별 지원자수 \n" +
+                                "position_title: developer, designer, ..\n" +
+                                "sort    : deadline-ascend, salary-descend\n" +
+                                "DEFAULT : 모든 포지션, 최신순"
+    )
+    
+    @admin_only
+    def get(self, request):
+        position_title = request.GET.get("position_title", "")
+        sort           = request.GET.get("sort", "created-descend")
+        print()
+        sort_dict = {
+            "created-descend" : "-created_at",
+        }
+
+        recruits = (Recruit.objects.filter(position_title__icontains=position_title)
+                                    .order_by(sort_dict[sort], '-created_at')
+                    )
+
+        results = [
+            {
+                "id"                  : recruit.id,
+                "position"            : recruit.position,
+                "position_title"      : recruit.position_title,
+                "work_type"           : recruit.work_type,
+                "career_type"         : recruit.get_career_type_display(),
+                "job_openings"        : recruit.job_openings,
+                "deadline"            : recruit.deadline,
+                "recruit_application" : Application.objects.filter(recruits=Recruit.objects.get(id=recruit.id)).count()
+            }
+            for recruit in recruits
+        ]
+        return JsonResponse({"results": results}, status=200)
+
+# 어드민 페이지 내부 공고조회
+class AdminPageRecruitView(APIView):
+    parameter_token = openapi.Parameter (
+                                        "Authorization", 
+                                        openapi.IN_HEADER, 
+                                        description = "access_token", 
+                                        type        = openapi.TYPE_STRING,
+                                        default     = ADMIN_TOKEN
+    )
+
+    recruits_get_response = openapi.Response("results", RecruitSerializer)
+
+    @swagger_auto_schema(
+        manual_parameters = [parameter_token],
+        query_serializer = RecruitQuerySerializer,
+        responses = {
+            "200": recruits_get_response,
+            "404": "NOT_FOUND"
+        },
+        operation_id = "어드민페이지 채용공고 목록 조회",
+        operation_description = "채용공고 목록을 조회합니다. 최신순으로 공고 정렬, 공고별 지원자 수\n" +
+                                "sort    : deadline-ascend, salary-descend\n" +
+                                "DEFAULT : 모든 포지션, 최신순"
+    )
+    @admin_only
+    def get(self, request):
+        sort           = request.GET.get("sort", "created-descend")
+
+        sort_dict = {
+            "created-descend" : "-created_at",
+        }
+        recruits = Recruit.objects.order_by(sort_dict[sort], '-created_at')
+        results = [
+            {
+                "id"                  : recruit.id,
+                "position"            : recruit.position,
+                "position_title"      : recruit.position_title,
+                "work_type"           : recruit.work_type,
+                "career_type"         : recruit.get_career_type_display(),
+                "job_openings"        : recruit.job_openings,
+                "deadline"            : recruit.deadline,
+                "recruit_application" : Application.objects.filter(recruits=Recruit.objects.get(id=recruit.id)).count()
+            }
+            for recruit in recruits
+        ]
+        return JsonResponse({"results": results}, status=200)
+   
 
