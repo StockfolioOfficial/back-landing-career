@@ -24,31 +24,42 @@ class CloudStorage:
     def __init__(self):
         self.client = boto3.client(
                 's3',
+                region_name='ap-northeast-2',
                 aws_access_key_id     = self.AWS_ACCESS_KEY_ID,
                 aws_secret_access_key = self.AWS_SECRET_ACCESS_KEY,
             )
         self.resource = boto3.resource(
                 's3',
+                region_name='ap-northeast-2',
                 aws_access_key_id     = self.AWS_ACCESS_KEY_ID,
                 aws_secret_access_key = self.AWS_SECRET_ACCESS_KEY,
             )
 
     def upload_file(self, file):
-        file_name = str(uuid.uuid1()) +"_"+ file.name
+        file_key = str(uuid.uuid1()) +"_"+ file.name
         self.client.upload_fileobj(
                         file,
                         self.BUCKET_NAME,
-                        file_name,
+                        file_key,
                         ExtraArgs={
                             "ContentType": file.content_type
                         }
         )
-        return "stockfolio.coo6llienldy.ap-northeast-2.rds.amazonaws.com/" + file_name
+        return file_key
 
     def delete_file(self, application_id):
-        file_url = Attachment.objects.get(application_id=application_id).file_url
+        file_key = Attachment.objects.get(application_id=application_id).file_url
         bucket = self.resource.Bucket(name=BUCKET_NAME)
-        bucket.Object(file_url[57:]).delete()
+        bucket.Object(file_key[1:]).delete()
+
+    def generate_presigned_url(self, application_id):
+        file_key = Attachment.objects.get(application_id=application_id).file_url
+        url = self.client.generate_presigned_url(
+                ClientMethod='get_object', 
+                Params={'Bucket': self.BUCKET_NAME, 
+                        'Key': file_key},
+                ExpiresIn=3600)
+        return url
 
 class ApplicationView(APIView):
     parameter_token = openapi.Parameter (
@@ -79,14 +90,15 @@ class ApplicationView(APIView):
 
     @login_required
     def get(self, request, recruit_id):
+        cloud_storage = CloudStorage()
         try:
             user        = request.user
             recruit     = Recruit.objects.get(id=recruit_id)
             application = recruit.applications.get(user=user)
-            attachment  = Attachment.objects.get(application=application)
             
             content = application.content
-            content["portfolio"]["portfolioUrl"] = attachment.file_url
+            content["portfolio"]["portfolioUrl"] = cloud_storage.generate_presigned_url(application.id)
+
             result = {"content": content}
 
             return JsonResponse({"result": result}, status=200)
@@ -309,14 +321,18 @@ class ApplicationAdminDetailView(APIView):
     
     @admin_only
     def get(self, request, application_id):
+        cloud_storage = CloudStorage()
         application = Application.objects.get(id=application_id)
+        
+        content = application.content
+        content["portfolio"]["portfolioUrl"] = cloud_storage.generate_presigned_url(application.id)
 
         attachment  = Attachment.objects.get(application=application)
         
         content = application.content
         content["portfolio"]["portfolioUrl"] = attachment.file_url
         
-        results = [
+        results =
             {   
                 'id'            : application_id,
                 'content'       : application.content,
@@ -334,7 +350,6 @@ class ApplicationAdminDetailView(APIView):
                 'position'      : Recruit.objects.get(applications=application).position,
                 'deadline'      : Recruit.objects.get(applications=application).deadline
             }
-        ]
 
         return JsonResponse({'results': results}, status=200)
     
