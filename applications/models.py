@@ -24,3 +24,12 @@ class Attachment(models.Model):
 
     class Meta:
         db_table = 'attachments'
+
+class Comment(TimeStampModel):
+    user        = models.ForeignKey('users.User', on_delete=models.CASCADE)
+    application = models.ForeignKey('Application', on_delete=models.CASCADE)
+    score       = models.PositiveIntegerField(default=2)
+    description = models.CharField(max_length=500)
+
+    class Meta:
+        db_table = 'comments'

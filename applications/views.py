@@ -2,6 +2,7 @@ import boto3
 import json
 import uuid
 
+from datetime             import datetime
 from django.db.models     import Q
 from django.http          import JsonResponse
 from drf_yasg             import openapi
@@ -12,8 +13,9 @@ from rest_framework.views import APIView
 from core.decorators          import login_required, admin_only
 from global_variable          import ADMIN_TOKEN, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, BUCKET_NAME
 from recruits.models          import Recruit
-from applications.models      import Application, Attachment
-from applications.serializers import ApplicationSerializer, ApplicationAdminSerializer, ApplicationAdminPatchSerializer
+from users.models             import User
+from applications.models      import Application, Attachment, Comment
+from applications.serializers import ApplicationSerializer, ApplicationAdminSerializer, ApplicationAdminPatchSerializer, CommentAdminSerializer
 
 class CloudStorage:
     AWS_ACCESS_KEY_ID = AWS_ACCESS_KEY_ID
@@ -274,7 +276,7 @@ class ApplicationAdminView(APIView):
                 'job_openings'  : [recruits.job_openings for recruits in application.recruits.all()],
                 'author'        : [recruits.author for recruits in application.recruits.all()],
                 'work_type'     : [recruits.work_type for recruits in application.recruits.all()],
-                'career_type'   : [recruits.career_type for recruits in application.recruits.all()],
+                'career_type'   : [recruits.get_career_type_display() for recruits in application.recruits.all()],
                 'position_title': [recruit.position_title for recruit in application.recruits.all()],
                 'position'      : [recruits.position for recruits in application.recruits.all()],
                 'deadline'      : [recruits.deadline for recruits in application.recruits.all()]
@@ -309,6 +311,11 @@ class ApplicationAdminDetailView(APIView):
     def get(self, request, application_id):
         application = Application.objects.get(id=application_id)
 
+        attachment  = Attachment.objects.get(application=application)
+        
+        content = application.content
+        content["portfolio"]["portfolioUrl"] = attachment.file_url
+        
         results = [
             {   
                 'id'            : application_id,
@@ -318,14 +325,14 @@ class ApplicationAdminDetailView(APIView):
                 'updated_at'    : application.updated_at,
                 'user_id'       : application.user.id,
                 'user_email'    : application.user.email,
-                'recruit_id'    : [recruits.id for recruits in application.recruits.all()],
-                'job_openings'  : [recruits.job_openings for recruits in application.recruits.all()],
-                'author'        : [recruits.author for recruits in application.recruits.all()],
-                'work_type'     : [recruits.work_type for recruits in application.recruits.all()],
-                'career_type'   : [recruits.career_type for recruits in application.recruits.all()],
-                'position_title': [recruits.position_type for recruits in application.recruits.all()],
-                'position'      : [recruits.position for recruits in application.recruits.all()],
-                'deadline'      : [recruits.deadline for recruits in application.recruits.all()]
+                'recruit_id'    : Recruit.objects.get(applications=application).id,
+                'job_openings'  : Recruit.objects.get(applications=application).job_openings,
+                'author'        : Recruit.objects.get(applications=application).author,
+                'work_type'     : Recruit.objects.get(applications=application).work_type,
+                'career_type'   : Recruit.objects.get(applications=application).get_career_type_display(),
+                'position_title': Recruit.objects.get(applications=application).position_title,
+                'position'      : Recruit.objects.get(applications=application).position,
+                'deadline'      : Recruit.objects.get(applications=application).deadline
             }
         ]
 
@@ -356,3 +363,135 @@ class ApplicationAdminDetailView(APIView):
 
         except Application.DoesNotExist:
             return JsonResponse({'message': 'APPLICATION_NOT_FOUND'}, status=404)
+
+
+class CommentAdminView(APIView):
+    parameter_token = openapi.Parameter (
+                                        "Authorization", 
+                                        openapi.IN_HEADER, 
+                                        description = "access_token", 
+                                        type        = openapi.TYPE_STRING,
+                                        default     = ADMIN_TOKEN
+    )
+    comment_admin_response = openapi.Response("result", CommentAdminSerializer)
+
+    @swagger_auto_schema (
+        manual_parameters = [parameter_token],
+        responses = {
+            "200": comment_admin_response,
+            "400": "BAD_REQUEST",
+            "401": "UNAUTHORIZED"
+        },
+        operation_id = "(관리자 전용) 지원서 코멘트 및 평가 조회",
+        operation_description = "header에 토큰이 필요합니다."
+    )
+
+    @admin_only
+    def get(self, request, application_id):
+        application = Application.objects.get(id=application_id)
+        
+        results = {  
+            'comments' : [{
+                    'admin_id'   : comment.user_id,
+                    'admin_name' : User.objects.get(id=comment.user_id).name if User.objects.get(id=comment.user_id).name else User.objects.get(id=comment.user_id).email.split('@')[0],
+                    'created_at' : comment.created_at,
+                    'updated_at' : comment.updated_at,
+                    'description': comment.description,
+                    'score'      : comment.score  
+            } for comment in Comment.objects.filter(application=application)]
+        }
+        return JsonResponse({'results': results}, status=200)
+    
+    @swagger_auto_schema (
+        manual_parameters = [parameter_token],
+        request_body= CommentAdminSerializer,
+        responses = {
+            "200": comment_admin_response,
+            "400": "BAD_REQUEST",
+            "401": "UNAUTHORIZED"
+        },
+        operation_id = "(관리자 전용) 지원서 코멘트 및 평가 생성",
+        operation_description = "header에 토큰이, body에 description과 score입력이 필요합니다.\n"
+    )
+
+    @admin_only
+    def post(self, request, application_id):
+        data = json.loads(request.body)
+        application = Application.objects.get(id=application_id)
+        
+        Comment.objects.create(
+            user_id        = request.user.id,
+            application_id = application.id,
+            description    = data['description'],
+            score          = data['score'],  
+        )
+
+        return JsonResponse({'message': 'SUCCESS'}, status=200)
+    
+class CommentAdminModifyView(APIView):
+    parameter_token = openapi.Parameter (
+                                        "Authorization", 
+                                        openapi.IN_HEADER, 
+                                        description = "access_token", 
+                                        type        = openapi.TYPE_STRING,
+                                        default     = ADMIN_TOKEN
+    )
+    comment_admin_response = openapi.Response("result", CommentAdminSerializer)
+    @swagger_auto_schema (
+        manual_parameters = [parameter_token],
+        request_body = CommentAdminSerializer,
+        responses = {
+            "200": "SUCCESS",
+            "400": "BAD_REQUEST",
+            "401": "UNAUTHORIZED"
+        },
+        operation_id = "(관리자 전용) 지원서 코멘트 및 평가 수정",
+        operation_description = "header에 토큰이, body에 description과 score입력이 필요합니다.\n"
+    )
+
+    @admin_only
+    def patch(self, request, application_id, comment_id): 
+        try:
+            data    = json.loads(request.body)
+            user    = request.user
+            comment = Comment.objects.get(id=comment_id)
+
+            if not user.id == comment.user_id:
+                return JsonResponse({'message': 'NOT_AUTHORIZED'}, status=403)
+            
+            Comment.objects.filter(id=comment_id).update(
+                description    = data['description'],
+                score          = data['score']
+            )
+            
+            return JsonResponse({'message': 'SUCCESS'}, status=200)
+
+        except Comment.DoesNotExist:
+            return JsonResponse({'message': 'NOT_FOUND'}, status=404)
+    
+    @swagger_auto_schema (
+        manual_parameters = [parameter_token],
+        responses = {
+            "200": "SUCCESS",
+            "400": "BAD_REQUEST",
+            "401": "UNAUTHORIZED"
+        },
+        operation_id = "(관리자 전용) 지원서 코멘트 및 평가 삭제",
+        operation_description = "header에 토큰이, body에 description과 score입력이 필요합니다.\n"
+    )
+    
+    @admin_only
+    def delete(self, request, application_id, comment_id):
+        try:
+            comment = Comment.objects.get(id=comment_id)
+
+            if not request.user.id == comment.user_id:
+                return JsonResponse({'message': 'NOT_AUTHORIZED'}, status=403)
+
+            comment.delete()
+
+            return JsonResponse({"message": "SUCCESS"}, status=200)
+
+        except Comment.DoesNotExist:
+            return JsonResponse({'message': 'NOT_FOUND'}, status=404)
+

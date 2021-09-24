@@ -37,10 +37,10 @@ def admin_only(func):
             user         = User.objects.get(id=pay_load['user_id'])
             request.user = user
             
-            if not role == 'admin':
+            if role == 'admin' or role == 'superadmin':
+                return func(self, request, *args, **kwargs)
+            else:
                 return JsonResponse({'message': 'UNAUTHORIZED'}, status=401)
-
-            return func(self, request, *args, **kwargs)
 
         except jwt.InvalidTokenError:
             return JsonResponse({'message': 'INVALID_TOKEN'}, status=401)
