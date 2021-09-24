@@ -8,6 +8,7 @@ class User(TimeStampModel, SoftDeleteModel):
     role     = models.CharField(max_length=15, default='common')
     name     = models.CharField(max_length=50, null=True)
 
+
     class Meta:
         db_table = 'users'
 
