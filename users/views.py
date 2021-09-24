@@ -51,7 +51,7 @@ class SignupView(APIView):
             user = User.objects.create(
                 email    = data['email'],
                 password = hashed_password.decode('utf-8'),
-                user_name  = data.get('name') if data.get('name') else email.split('@')[0]
+                name     = data.get('name') if data.get('name') else email.split('@')[0]
             )
 
             access_token = jwt.encode({'user_id': user.id, 'role': user.role}, SECRET_KEY, ALGORITHM)
@@ -293,7 +293,7 @@ class SuperAdminView(APIView):
         result = [{
             "id"        : admin.id,
             "email"     : admin.email,
-            "username"  : admin.name if admin.name else admin.email.split('@')[0],
+            "name"      : admin.name if admin.name else admin.email.split('@')[0],
             "created_at": admin.created_at,
             "updated_at": admin.updated_at,
             "password"  : '********'
@@ -334,7 +334,7 @@ class SuperAdminView(APIView):
                 email    = data['email'],
                 password = hashed_password.decode('utf-8'),
                 role     = 'admin',
-                name     = data['username']
+                name     = data.get('name') if data.get('name') else email.split('@')[0]
             )
 
             return JsonResponse({"message": "SUCCESS"}, status=200)
