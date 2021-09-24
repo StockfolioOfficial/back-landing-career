@@ -406,6 +406,7 @@ class CommentAdminView(APIView):
         
         results = {  
             'comments' : [{
+                    'id'         : comment.id,
                     'admin_id'   : comment.user_id,
                     'admin_name' : User.objects.get(id=comment.user_id).name if User.objects.get(id=comment.user_id).name else User.objects.get(id=comment.user_id).email.split('@')[0],
                     'created_at' : comment.created_at,
