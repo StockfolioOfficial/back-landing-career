@@ -332,8 +332,7 @@ class ApplicationAdminDetailView(APIView):
         content = application.content
         content["portfolio"]["portfolioUrl"] = attachment.file_url
         
-        results =
-            {   
+        results = {   
                 'id'            : application_id,
                 'content'       : application.content,
                 'status'        : application.status,
