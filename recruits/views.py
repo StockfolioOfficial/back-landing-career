@@ -9,6 +9,8 @@ from drf_yasg       import openapi
 
 from global_variable import ADMIN_TOKEN
 from recruits.models import Recruit, Stack, RecruitStack
+from applications.models import Application
+from users.models import User
 from core.decorators import admin_only
 from recruits.serializers import RecruitSerializer, RecruitQuerySerializer, RecruitCreateBodySerializer
 
@@ -143,10 +145,10 @@ class RecruitAdminView(APIView):
             recruit = Recruit.objects.prefetch_related('stacks').get(id=recruit_id)
 
             result = {
-                "recruits"           : Recruit.objects.all().count(),
-                "dev_recruits"       : Recruit.objects.filter(position = '개발').count(),
-                "design_recruits"    : Recruit.objects.filter(position = '디자인').count(),
-                "marketing_recruits" : Recruit.objects.filter(position = '마케터').count(),
+                "num_recruits"           : Recruit.objects.all().count(),
+                "num_dev_recruits"       : Recruit.objects.filter(position = '개발').count(),
+                "num_design_recruits"    : Recruit.objects.filter(position = '디자인').count(),
+                "num_marketing_recruits" : Recruit.objects.filter(position = '마케터').count(),
                 "num_applicants"     : Application.objects.filter(recruits=Recruit.objects.get(id=recruit.id)).count(),
                 "id"                 : recruit.id,
                 "position"           : recruit.position,
@@ -154,6 +156,7 @@ class RecruitAdminView(APIView):
                 "work_type"          : recruit.work_type,
                 "career_type"        : recruit.get_career_type_display(),
                 "author"             : recruit.author,
+                "author_name"        : User.objects.get(email=recruit.author).name if User.objects.get(email=recruit.author).name else recruit.author,
                 "job_openings"       : recruit.job_openings,
                 "description"        : recruit.description,
                 "minimum_salary"     : recruit.minimum_salary,
