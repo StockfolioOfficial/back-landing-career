@@ -14,7 +14,7 @@ from core.decorators          import login_required, admin_only
 from global_variable          import ADMIN_TOKEN, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, BUCKET_NAME
 from recruits.models          import Recruit
 from users.models             import User
-from applications.models      import Application, Attachment, Comment
+from applications.models      import Application, Attachment, Comment, ApplicationAccessLog
 from applications.serializers import ApplicationSerializer, ApplicationAdminSerializer, ApplicationAdminPatchSerializer, CommentAdminSerializer
 
 class CloudStorage:
@@ -509,3 +509,58 @@ class CommentAdminModifyView(APIView):
         except Comment.DoesNotExist:
             return JsonResponse({'message': 'NOT_FOUND'}, status=404)
 
+class ApplicatorAdminView(APIView):
+    parameter_token = openapi.Parameter (
+                                        "Authorization", 
+                                        openapi.IN_HEADER, 
+                                        description = "access_token", 
+                                        type        = openapi.TYPE_STRING,
+                                        default     = ADMIN_TOKEN
+    )
+   
+    application_admin_response = openapi.Response("result", ApplicationAdminSerializer)
+
+    @swagger_auto_schema (
+        manual_parameters = [parameter_token],
+        responses = {
+            "200": application_admin_response,
+            "400": "BAD_REQUEST",
+            "401": "UNAUTHORIZED"
+        },
+        operation_id = "어드민페이지 최근지원자뷰",
+        operation_description = "header에 토큰이 필요합니다." 
+    )
+
+    @admin_only
+    def get(self, request):
+
+        applications = Application.objects.all().order_by('-created_at')
+
+        for application in applications:
+           for i in range(0,len(application.content['career'])): 
+            total = 0
+            try:
+                end_date     = datetime.strptime(application.content['career'][i]['leavingDate'],"%Y/%m/%d")
+                start_date   = datetime.strptime(application.content['career'][i]['joinDate'],"%Y/%m/%d")
+                total        = ((end_date - start_date).days)
+                years        = int(total) // 365
+                months       = int(total) %365/30
+                career_total = [years, int(months)]
+
+                results = [{
+                    "application_id"    : application.id,
+                    "created_at"        : application.created_at,
+                    "user_name"         : application.user.name if application.user.name else application.user.email.split('@')[0],
+                    "user_email"        : application.user.email,
+                    "user_phoneNumber"  : application.content['basicInfo']['phoneNumber'],
+                    "position_title"    : [recruit.position_title for recruit in Recruit.objects.filter(applications=application)],
+                    "career_type"       : [recruit.get_career_type_display() for recruit in Recruit.objects.filter(applications=application)],
+                    "log"               : ApplicationAccessLog.objects.filter(user_id=request.user.id, application_id=application.id).exists(),           
+                    "career_date"       : career_total,
+                } for application in applications]         
+                return JsonResponse({'results': results}, status=200)
+
+            except Exception as e:
+                if e != 0:
+                    return e == 0
+                return JsonResponse({'results': results}, status=200)
