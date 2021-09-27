@@ -1,6 +1,8 @@
-import boto3, json, uuid, time
+import boto3
+import json
+import uuid, datetime
 
-from datetime             import datetime, timedelta
+from datetime             import date, datetime, timedelta
 from django.db.models     import Q
 from django.http          import JsonResponse
 from drf_yasg             import openapi
@@ -9,11 +11,55 @@ from rest_framework       import parsers
 from rest_framework.views import APIView
 
 from core.decorators          import login_required, admin_only
-from global_variable          import ADMIN_TOKEN, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+from global_variable          import ADMIN_TOKEN, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, BUCKET_NAME
 from recruits.models          import Recruit, RecruitApplication
 from users.models             import User
 from applications.models      import Application, ApplicationAccessLog, Attachment, Comment
 from applications.serializers import ApplicationSerializer, ApplicationAdminSerializer, ApplicationAdminPatchSerializer, CommentAdminSerializer
+
+class CloudStorage:
+    AWS_ACCESS_KEY_ID = AWS_ACCESS_KEY_ID
+    AWS_SECRET_ACCESS_KEY = AWS_SECRET_ACCESS_KEY
+    BUCKET_NAME = BUCKET_NAME
+    def __init__(self):
+        self.client = boto3.client(
+                's3',
+                region_name='ap-northeast-2',
+                aws_access_key_id     = self.AWS_ACCESS_KEY_ID,
+                aws_secret_access_key = self.AWS_SECRET_ACCESS_KEY,
+            )
+        self.resource = boto3.resource(
+                's3',
+                region_name='ap-northeast-2',
+                aws_access_key_id     = self.AWS_ACCESS_KEY_ID,
+                aws_secret_access_key = self.AWS_SECRET_ACCESS_KEY,
+            )
+
+    def upload_file(self, file):
+        file_key = str(uuid.uuid1()) +"_"+ file.name
+        self.client.upload_fileobj(
+                        file,
+                        self.BUCKET_NAME,
+                        file_key,
+                        ExtraArgs={
+                            "ContentType": file.content_type
+                        }
+        )
+        return file_key
+
+    def delete_file(self, application_id):
+        file_key = Attachment.objects.get(application_id=application_id).file_url
+        bucket = self.resource.Bucket(name=BUCKET_NAME)
+        bucket.Object(file_key[1:]).delete()
+
+    def generate_presigned_url(self, application_id):
+        file_key = Attachment.objects.get(application_id=application_id).file_url
+        url = self.client.generate_presigned_url(
+                ClientMethod='get_object', 
+                Params={'Bucket': self.BUCKET_NAME, 
+                        'Key': file_key},
+                ExpiresIn=3600)
+        return url
 
 class ApplicationView(APIView):
     parameter_token = openapi.Parameter (
@@ -30,7 +76,7 @@ class ApplicationView(APIView):
                                         type        = openapi.TYPE_FILE
     )
     parser_classes = (parsers.FormParser, parsers.MultiPartParser, parsers.FileUploadParser)
-
+    
     @swagger_auto_schema (
         manual_parameters = [parameter_token],
         responses = {
@@ -44,14 +90,15 @@ class ApplicationView(APIView):
 
     @login_required
     def get(self, request, recruit_id):
+        cloud_storage = CloudStorage()
         try:
             user        = request.user
             recruit     = Recruit.objects.get(id=recruit_id)
             application = recruit.applications.get(user=user)
-            attachment  = Attachment.objects.get(application=application)
             
             content = application.content
-            content["portfolio"]["portfolioUrl"] = attachment.file_url
+            content["portfolio"]["portfolioUrl"] = cloud_storage.generate_presigned_url(application.id)
+
             result = {"content": content}
 
             return JsonResponse({"result": result}, status=200)
@@ -78,53 +125,22 @@ class ApplicationView(APIView):
     
     @login_required
     def post(self, request, recruit_id):
+        cloud_storage = CloudStorage()
         try:
             user    = request.user
             recruit = Recruit.objects.get(id=recruit_id)
-            content = request.POST['content']
-            content  = json.loads(content)
+            content = json.loads(request.POST['content'])
             status  = "ST1"
+            file    = request.FILES
 
             if recruit.applications.filter(user=user).exists():
                 return JsonResponse({"message": "ALREADY_EXISTS"}, status=400)
 
-            if not request.FILES:
+            if not file:
                 file_url = content["portfolio"]["portfolioUrl"]
                 
-                application = Application.objects.create(
-                                        content = content,
-                                        status  = status,
-                                        user    = user,
-                )
-                application.recruits.add(recruit)
-
-                Attachment.objects.create(
-                    file_url    = file_url,
-                    application = application
-                )
-
-                return JsonResponse({"message": "SUCCESS"}, status=201)
-
-            portfolio = request.FILES['portfolio']
-            
-            s3_client = boto3.client(
-                's3',
-                aws_access_key_id     = AWS_ACCESS_KEY_ID,
-                aws_secret_access_key = AWS_SECRET_ACCESS_KEY
-            )
-
-            file_name = str(uuid.uuid1())
-            
-            s3_client.upload_fileobj(
-                portfolio,
-                "stockers-bucket",
-                file_name,
-                ExtraArgs={
-                    "ContentType": portfolio.content_type
-                }
-            )
-
-            file_url = "stockfolio.coo6llienldy.ap-northeast-2.rds.amazonaws.com/" + file_name
+            if file:
+                file_url = cloud_storage.upload_file(file["portfolio"])
 
             application = Application.objects.create(
                 content = content,
@@ -162,46 +178,25 @@ class ApplicationView(APIView):
     
     @login_required
     def patch(self, request, recruit_id):
+        cloud_storage = CloudStorage()
         try:
             user    = request.user
-            recruit = Recruit.objects.get(id=recruit_id)
+            file    = request.FILES
+            content = json.loads(request.POST["content"])
             
-            content = request.POST["content"]
-            content = json.loads(content)
-            
-            application = recruit.applications.get(user=user)
+            application = Recruit.objects.get(id=recruit_id).applications.get(user=user)
             application.content = content
             application.save()
 
             attachment = Attachment.objects.get(application=application)
-
-            s3_client = boto3.client(
-                's3',
-                aws_access_key_id     = AWS_ACCESS_KEY_ID,
-                aws_secret_access_key = AWS_SECRET_ACCESS_KEY
-            )
-
-            if request.FILES:
-                portfolio = request.FILES["portfolio"]
-                file_name = str(uuid.uuid1())
             
-                s3_client.upload_fileobj(
-                    portfolio,
-                    "stockers-bucket",
-                    file_name,
-                    ExtraArgs={"ContentType": portfolio.content_type}
-                )
-
-                file_url = "stockfolio.coo6llienldy.ap-northeast-2.rds.amazonaws.com/" + file_name
-                
+            if file:
+                cloud_storage.delete_file(application.id)
+                attachment.delete()
+                file_url = cloud_storage.upload_file(file["portfolio"])
             else:
                 file_url = content["portfolio"]["portfolioUrl"]
-
-            if "stockfolio.coo6llienldy.ap-northeast-2.rds.amazonaws.com/" in attachment.file_url:
-                if not file_url == attachment.file_url:
-                    key = attachment.file_url.replace("stockfolio.coo6llienldy.ap-northeast-2.rds.amazonaws.com/", "")
-                    s3_client.delete_object(Bucket="stockers-bucket", Key=key)
-                
+            
             attachment.file_url = file_url
             attachment.save()
                 
@@ -227,11 +222,12 @@ class ApplicationView(APIView):
     
     @login_required
     def delete(self, request, recruit_id):
+        cloud_storage = CloudStorage()
         try:
-            user    = request.user
-            recruit = Recruit.objects.get(id=recruit_id)
+            user        = request.user
+            application = Recruit.objects.get(id=recruit_id).applications.get(user=user)
 
-            application = recruit.applications.get(user=user)
+            cloud_storage.delete_file(application.id)
             application.delete()
 
             return JsonResponse({"message": "SUCCESS"}, status=200)
@@ -259,7 +255,7 @@ class ApplicationAdminView(APIView):
             "400": "BAD_REQUEST",
             "401": "UNAUTHORIZED",
         },
-        operation_id = "(관리자 전용) 지원자 전체 목록 조회",
+        operation_id = "(관리자 전용) 지원목록 조회",
         operation_description = "header에 토큰이 필요합니다."
     )
 
@@ -282,8 +278,6 @@ class ApplicationAdminView(APIView):
 
         applications = Application.objects.filter(q).order_by('-created_at')
 
-        log = ApplicationAccessLog.objects.filter(user=request.user, application__in=(application.id for application in applications)).all()
-        
         results = [
             {
                 'content'       : application.content,
@@ -294,13 +288,13 @@ class ApplicationAdminView(APIView):
                 'job_openings'  : [recruits.job_openings for recruits in application.recruits.all()],
                 'author'        : [recruits.author for recruits in application.recruits.all()],
                 'work_type'     : [recruits.work_type for recruits in application.recruits.all()],
-                'career_type'   : [recruits.career_type for recruits in application.recruits.all()],
+                'career_type'   : [recruits.get_career_type_display() for recruits in application.recruits.all()],
                 'position_title': [recruit.position_title for recruit in application.recruits.all()],
                 'position'      : [recruits.position for recruits in application.recruits.all()],
-                'deadline'      : [recruits.deadline for recruits in application.recruits.all()],
-                'new'           : ApplicationAccessLog.objects.filter(user_id=request.user.id, application_id=application.id).exists(),
+                'deadline'      : [recruits.deadline for recruits in application.recruits.all()]
             }
         for application in applications]
+
         return JsonResponse({'results': results}, status=200)
 
 class ApplicationAdminDetailView(APIView):
@@ -327,7 +321,12 @@ class ApplicationAdminDetailView(APIView):
     
     @admin_only
     def get(self, request, application_id):
+        cloud_storage = CloudStorage()
         application = Application.objects.get(id=application_id)
+        
+        content = application.content
+        content["portfolio"]["portfolioUrl"] = cloud_storage.generate_presigned_url(application.id)
+
         attachment  = Attachment.objects.get(application=application)
         
         content = application.content
@@ -341,15 +340,20 @@ class ApplicationAdminDetailView(APIView):
                 'updated_at'    : application.updated_at,
                 'user_id'       : application.user.id,
                 'user_email'    : application.user.email,
-                'recruit_id'    : [recruits.id for recruits in application.recruits.all()],
-                'job_openings'  : [recruits.job_openings for recruits in application.recruits.all()],
-                'author'        : [recruits.author for recruits in application.recruits.all()],
-                'work_type'     : [recruits.work_type for recruits in application.recruits.all()],
-                'career_type'   : [recruits.career_type for recruits in application.recruits.all()],
-                'position_title': [recruits.position_title for recruits in application.recruits.all()],
-                'position'      : [recruits.position for recruits in application.recruits.all()],
-                'deadline'      : [recruits.deadline for recruits in application.recruits.all()]
+                'recruit_id'    : Recruit.objects.get(applications=application).id,
+                'job_openings'  : Recruit.objects.get(applications=application).job_openings,
+                'author'        : Recruit.objects.get(applications=application).author,
+                'work_type'     : Recruit.objects.get(applications=application).work_type,
+                'career_type'   : Recruit.objects.get(applications=application).get_career_type_display(),
+                'position_title': Recruit.objects.get(applications=application).position_title,
+                'position'      : Recruit.objects.get(applications=application).position,
+                'deadline'      : Recruit.objects.get(applications=application).deadline
             }
+
+        ApplicationAccessLog.objects.create(   
+                user_id        = request.user.id,
+                application_id = application_id,
+            )
 
         return JsonResponse({'results': results}, status=200)
     
@@ -378,6 +382,7 @@ class ApplicationAdminDetailView(APIView):
 
         except Application.DoesNotExist:
             return JsonResponse({'message': 'APPLICATION_NOT_FOUND'}, status=404)
+
 
 
 class CommentAdminView(APIView):
@@ -538,22 +543,43 @@ class ApplicatorAdminView(APIView):
     def get(self, request):
 
         applications = Application.objects.all().order_by('-created_at')
-        log = ApplicationAccessLog.objects.filter(user=request.user, application__in=(application.id for application in applications)).all()
+        log          = ApplicationAccessLog.objects.filter(user=request.user, application__in=(application.id for application in applications)).all()
 
+        for application in applications:
+           for i in range(0,len(application.content['career'])): 
+            total = 0
+            try:
+                # print(type(datetime.strptime(application.content['career'][i]['leavingDate'],"%Y-%m/%d")))
+                end_date = datetime.strptime(application.content['career'][i]['leavingDate'],"%Y/%m/%d")
+                start_date  = datetime.strptime(application.content['career'][i]['joinDate'],"%Y/%m/%d")
+                print(end_date)
+                print(start_date)
+                total = ((end_date - start_date).days)
+                print(total)
+            except Exception as e:
+                
+                print(e)
+
+            
+            
         # for application in applications:
         #     totalDays=0
         #     for i in range(0,len(application.content['career'])):
-        #         Days = datetime.strptime(application.content['career'][i]['leavingDate'],'%Y/%m/%d')\
-        #             - datetime.strptime(application.content['career'][i]['joinDate'],'%Y/%m/%d')
-        #         totalDays += Days(time.strftime)
-        #     print(totalDays)
-        #     years  = str(totalDays.days//365)
-        #     months = str((totalDays.days%365)//30)
+                #Days = int(application.content['career'][i]['leavingDate']) - int(application.content['career'][i]['joinDate'])
+                #Days = str(datetime.strptime(application.content['career'][i]['leavingDate'])) - str(datetime.strptime(application.content['career'][i]['joinDate']))
+                # Days = datetime.strptime(application.content['career'][i]['leavingDate'],'%Y-%m-%d')\
+                #       - datetime.strptime(application.content['career'][i]['joinDate'],'%Y-%m-%d')
+                # print(Days)
+                # Days = str(Days)
+                # totalDays = Days[:3]
+                # print(type(totalDays))
+            # years  = int(totalDays) // 365
+            # months = int(totalDays) %365/30
 
         results = [{
             "application_id"    : application.id,
             "created_at"        : application.created_at,
-            #"content"          : application.content,
+            "content"          : application.content,
             "user_name"         : application.user.name if application.user.name else application.user.email.split('@')[0],
             "user_email"        : application.user.email,
             "user_phoneNumber"  : application.content['basicInfo']['phoneNumber'],
