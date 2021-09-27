@@ -6,6 +6,7 @@ class SignupBodySerializer(serializers.Serializer):
     email          = serializers.EmailField()
     password       = serializers.CharField()
     password_check = serializers.CharField()
+    name           = serializers.CharField()
 
 class SigninBodySerializer(serializers.Serializer):
     email      = serializers.EmailField()
@@ -36,8 +37,9 @@ class ChangePasswordSerializer(serializers.Serializer):
 class SuperadminGetSerializer(serializers.ModelSerializer):
     class Meta:
         model  = User
-        fields = ['email', 'created_at', 'updated_at']
+        fields = ['email', 'created_at', 'updated_at', 'name']
 
 class SuperadminPatchSerializer(serializers.Serializer):
-    new_password       = serializers.CharField()
-    new_password_check = serializers.CharField()
+    new_name     = serializers.CharField()
+    new_email    = serializers.CharField()
+    new_password = serializers.CharField()

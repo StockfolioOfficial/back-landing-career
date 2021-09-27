@@ -2,6 +2,7 @@ import boto3
 import json
 import uuid
 
+from datetime             import datetime
 from django.db.models     import Q
 from django.http          import JsonResponse
 from drf_yasg             import openapi
@@ -10,10 +11,55 @@ from rest_framework       import parsers
 from rest_framework.views import APIView
 
 from core.decorators          import login_required, admin_only
-from global_variable          import ADMIN_TOKEN, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+from global_variable          import ADMIN_TOKEN, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, BUCKET_NAME
 from recruits.models          import Recruit
-from applications.models      import Application, Attachment
-from applications.serializers import ApplicationSerializer, ApplicationAdminSerializer, ApplicationAdminPatchSerializer
+from users.models             import User
+from applications.models      import Application, Attachment, Comment
+from applications.serializers import ApplicationSerializer, ApplicationAdminSerializer, ApplicationAdminPatchSerializer, CommentAdminSerializer
+
+class CloudStorage:
+    AWS_ACCESS_KEY_ID = AWS_ACCESS_KEY_ID
+    AWS_SECRET_ACCESS_KEY = AWS_SECRET_ACCESS_KEY
+    BUCKET_NAME = BUCKET_NAME
+    def __init__(self):
+        self.client = boto3.client(
+                's3',
+                region_name='ap-northeast-2',
+                aws_access_key_id     = self.AWS_ACCESS_KEY_ID,
+                aws_secret_access_key = self.AWS_SECRET_ACCESS_KEY,
+            )
+        self.resource = boto3.resource(
+                's3',
+                region_name='ap-northeast-2',
+                aws_access_key_id     = self.AWS_ACCESS_KEY_ID,
+                aws_secret_access_key = self.AWS_SECRET_ACCESS_KEY,
+            )
+
+    def upload_file(self, file):
+        file_key = str(uuid.uuid1()) +"_"+ file.name
+        self.client.upload_fileobj(
+                        file,
+                        self.BUCKET_NAME,
+                        file_key,
+                        ExtraArgs={
+                            "ContentType": file.content_type
+                        }
+        )
+        return file_key
+
+    def delete_file(self, application_id):
+        file_key = Attachment.objects.get(application_id=application_id).file_url
+        bucket = self.resource.Bucket(name=BUCKET_NAME)
+        bucket.Object(file_key[1:]).delete()
+
+    def generate_presigned_url(self, application_id):
+        file_key = Attachment.objects.get(application_id=application_id).file_url
+        url = self.client.generate_presigned_url(
+                ClientMethod='get_object', 
+                Params={'Bucket': self.BUCKET_NAME, 
+                        'Key': file_key},
+                ExpiresIn=3600)
+        return url
 
 class ApplicationView(APIView):
     parameter_token = openapi.Parameter (
@@ -30,7 +76,7 @@ class ApplicationView(APIView):
                                         type        = openapi.TYPE_FILE
     )
     parser_classes = (parsers.FormParser, parsers.MultiPartParser, parsers.FileUploadParser)
-
+    
     @swagger_auto_schema (
         manual_parameters = [parameter_token],
         responses = {
@@ -44,14 +90,15 @@ class ApplicationView(APIView):
 
     @login_required
     def get(self, request, recruit_id):
+        cloud_storage = CloudStorage()
         try:
             user        = request.user
             recruit     = Recruit.objects.get(id=recruit_id)
             application = recruit.applications.get(user=user)
-            attachment  = Attachment.objects.get(application=application)
             
             content = application.content
-            content["portfolio"]["portfolioUrl"] = attachment.file_url
+            content["portfolio"]["portfolioUrl"] = cloud_storage.generate_presigned_url(application.id)
+
             result = {"content": content}
 
             return JsonResponse({"result": result}, status=200)
@@ -78,53 +125,22 @@ class ApplicationView(APIView):
     
     @login_required
     def post(self, request, recruit_id):
+        cloud_storage = CloudStorage()
         try:
             user    = request.user
             recruit = Recruit.objects.get(id=recruit_id)
-            content = request.POST['content']
-            content  = json.loads(content)
+            content = json.loads(request.POST['content'])
             status  = "ST1"
+            file    = request.FILES
 
             if recruit.applications.filter(user=user).exists():
                 return JsonResponse({"message": "ALREADY_EXISTS"}, status=400)
 
-            if not request.FILES:
+            if not file:
                 file_url = content["portfolio"]["portfolioUrl"]
                 
-                application = Application.objects.create(
-                                        content = content,
-                                        status  = status,
-                                        user    = user,
-                )
-                application.recruits.add(recruit)
-
-                Attachment.objects.create(
-                    file_url    = file_url,
-                    application = application
-                )
-
-                return JsonResponse({"message": "SUCCESS"}, status=201)
-
-            portfolio = request.FILES['portfolio']
-            
-            s3_client = boto3.client(
-                's3',
-                aws_access_key_id     = AWS_ACCESS_KEY_ID,
-                aws_secret_access_key = AWS_SECRET_ACCESS_KEY
-            )
-
-            file_name = str(uuid.uuid1())
-            
-            s3_client.upload_fileobj(
-                portfolio,
-                "stockers-bucket",
-                file_name,
-                ExtraArgs={
-                    "ContentType": portfolio.content_type
-                }
-            )
-
-            file_url = "stockfolio.coo6llienldy.ap-northeast-2.rds.amazonaws.com/" + file_name
+            if file:
+                file_url = cloud_storage.upload_file(file["portfolio"])
 
             application = Application.objects.create(
                 content = content,
@@ -162,46 +178,25 @@ class ApplicationView(APIView):
     
     @login_required
     def patch(self, request, recruit_id):
+        cloud_storage = CloudStorage()
         try:
             user    = request.user
-            recruit = Recruit.objects.get(id=recruit_id)
+            file    = request.FILES
+            content = json.loads(request.POST["content"])
             
-            content = request.POST["content"]
-            content = json.loads(content)
-            
-            application = recruit.applications.get(user=user)
+            application = Recruit.objects.get(id=recruit_id).applications.get(user=user)
             application.content = content
             application.save()
 
             attachment = Attachment.objects.get(application=application)
-
-            s3_client = boto3.client(
-                's3',
-                aws_access_key_id     = AWS_ACCESS_KEY_ID,
-                aws_secret_access_key = AWS_SECRET_ACCESS_KEY
-            )
-
-            if request.FILES:
-                portfolio = request.FILES["portfolio"]
-                file_name = str(uuid.uuid1())
             
-                s3_client.upload_fileobj(
-                    portfolio,
-                    "stockers-bucket",
-                    file_name,
-                    ExtraArgs={"ContentType": portfolio.content_type}
-                )
-
-                file_url = "stockfolio.coo6llienldy.ap-northeast-2.rds.amazonaws.com/" + file_name
-                
+            if file:
+                cloud_storage.delete_file(application.id)
+                attachment.delete()
+                file_url = cloud_storage.upload_file(file["portfolio"])
             else:
                 file_url = content["portfolio"]["portfolioUrl"]
-
-            if "stockfolio.coo6llienldy.ap-northeast-2.rds.amazonaws.com/" in attachment.file_url:
-                if not file_url == attachment.file_url:
-                    key = attachment.file_url.replace("stockfolio.coo6llienldy.ap-northeast-2.rds.amazonaws.com/", "")
-                    s3_client.delete_object(Bucket="stockers-bucket", Key=key)
-                
+            
             attachment.file_url = file_url
             attachment.save()
                 
@@ -227,11 +222,12 @@ class ApplicationView(APIView):
     
     @login_required
     def delete(self, request, recruit_id):
+        cloud_storage = CloudStorage()
         try:
-            user    = request.user
-            recruit = Recruit.objects.get(id=recruit_id)
+            user        = request.user
+            application = Recruit.objects.get(id=recruit_id).applications.get(user=user)
 
-            application = recruit.applications.get(user=user)
+            cloud_storage.delete_file(application.id)
             application.delete()
 
             return JsonResponse({"message": "SUCCESS"}, status=200)
@@ -292,7 +288,7 @@ class ApplicationAdminView(APIView):
                 'job_openings'  : [recruits.job_openings for recruits in application.recruits.all()],
                 'author'        : [recruits.author for recruits in application.recruits.all()],
                 'work_type'     : [recruits.work_type for recruits in application.recruits.all()],
-                'career_type'   : [recruits.career_type for recruits in application.recruits.all()],
+                'career_type'   : [recruits.get_career_type_display() for recruits in application.recruits.all()],
                 'position_title': [recruit.position_title for recruit in application.recruits.all()],
                 'position'      : [recruits.position for recruits in application.recruits.all()],
                 'deadline'      : [recruits.deadline for recruits in application.recruits.all()]
@@ -325,10 +321,18 @@ class ApplicationAdminDetailView(APIView):
     
     @admin_only
     def get(self, request, application_id):
+        cloud_storage = CloudStorage()
         application = Application.objects.get(id=application_id)
+        
+        content = application.content
+        content["portfolio"]["portfolioUrl"] = cloud_storage.generate_presigned_url(application.id)
 
-        results = [
-            {   
+        attachment  = Attachment.objects.get(application=application)
+        
+        content = application.content
+        content["portfolio"]["portfolioUrl"] = attachment.file_url
+        
+        results = {   
                 'id'            : application_id,
                 'content'       : application.content,
                 'status'        : application.status,
@@ -336,16 +340,15 @@ class ApplicationAdminDetailView(APIView):
                 'updated_at'    : application.updated_at,
                 'user_id'       : application.user.id,
                 'user_email'    : application.user.email,
-                'recruit_id'    : [recruits.id for recruits in application.recruits.all()],
-                'job_openings'  : [recruits.job_openings for recruits in application.recruits.all()],
-                'author'        : [recruits.author for recruits in application.recruits.all()],
-                'work_type'     : [recruits.work_type for recruits in application.recruits.all()],
-                'career_type'   : [recruits.career_type for recruits in application.recruits.all()],
-                'position_title': [recruits.position_type for recruits in application.recruits.all()],
-                'position'      : [recruits.position for recruits in application.recruits.all()],
-                'deadline'      : [recruits.deadline for recruits in application.recruits.all()]
+                'recruit_id'    : Recruit.objects.get(applications=application).id,
+                'job_openings'  : Recruit.objects.get(applications=application).job_openings,
+                'author'        : Recruit.objects.get(applications=application).author,
+                'work_type'     : Recruit.objects.get(applications=application).work_type,
+                'career_type'   : Recruit.objects.get(applications=application).get_career_type_display(),
+                'position_title': Recruit.objects.get(applications=application).position_title,
+                'position'      : Recruit.objects.get(applications=application).position,
+                'deadline'      : Recruit.objects.get(applications=application).deadline
             }
-        ]
 
         return JsonResponse({'results': results}, status=200)
     
@@ -374,3 +377,136 @@ class ApplicationAdminDetailView(APIView):
 
         except Application.DoesNotExist:
             return JsonResponse({'message': 'APPLICATION_NOT_FOUND'}, status=404)
+
+
+class CommentAdminView(APIView):
+    parameter_token = openapi.Parameter (
+                                        "Authorization", 
+                                        openapi.IN_HEADER, 
+                                        description = "access_token", 
+                                        type        = openapi.TYPE_STRING,
+                                        default     = ADMIN_TOKEN
+    )
+    comment_admin_response = openapi.Response("result", CommentAdminSerializer)
+
+    @swagger_auto_schema (
+        manual_parameters = [parameter_token],
+        responses = {
+            "200": comment_admin_response,
+            "400": "BAD_REQUEST",
+            "401": "UNAUTHORIZED"
+        },
+        operation_id = "(관리자 전용) 지원서 코멘트 및 평가 조회",
+        operation_description = "header에 토큰이 필요합니다."
+    )
+
+    @admin_only
+    def get(self, request, application_id):
+        application = Application.objects.get(id=application_id)
+        
+        results = {  
+            'comments' : [{
+                    'id'         : comment.id,
+                    'admin_id'   : comment.user_id,
+                    'admin_name' : User.objects.get(id=comment.user_id).name if User.objects.get(id=comment.user_id).name else User.objects.get(id=comment.user_id).email.split('@')[0],
+                    'created_at' : comment.created_at,
+                    'updated_at' : comment.updated_at,
+                    'description': comment.description,
+                    'score'      : comment.score  
+            } for comment in Comment.objects.filter(application=application)]
+        }
+        return JsonResponse({'results': results}, status=200)
+    
+    @swagger_auto_schema (
+        manual_parameters = [parameter_token],
+        request_body= CommentAdminSerializer,
+        responses = {
+            "200": comment_admin_response,
+            "400": "BAD_REQUEST",
+            "401": "UNAUTHORIZED"
+        },
+        operation_id = "(관리자 전용) 지원서 코멘트 및 평가 생성",
+        operation_description = "header에 토큰이, body에 description과 score입력이 필요합니다.\n"
+    )
+
+    @admin_only
+    def post(self, request, application_id):
+        data = json.loads(request.body)
+        application = Application.objects.get(id=application_id)
+        
+        Comment.objects.create(
+            user_id        = request.user.id,
+            application_id = application.id,
+            description    = data['description'],
+            score          = data['score'],  
+        )
+
+        return JsonResponse({'message': 'SUCCESS'}, status=200)
+    
+class CommentAdminModifyView(APIView):
+    parameter_token = openapi.Parameter (
+                                        "Authorization", 
+                                        openapi.IN_HEADER, 
+                                        description = "access_token", 
+                                        type        = openapi.TYPE_STRING,
+                                        default     = ADMIN_TOKEN
+    )
+    comment_admin_response = openapi.Response("result", CommentAdminSerializer)
+    @swagger_auto_schema (
+        manual_parameters = [parameter_token],
+        request_body = CommentAdminSerializer,
+        responses = {
+            "200": "SUCCESS",
+            "400": "BAD_REQUEST",
+            "401": "UNAUTHORIZED"
+        },
+        operation_id = "(관리자 전용) 지원서 코멘트 및 평가 수정",
+        operation_description = "header에 토큰이, body에 description과 score입력이 필요합니다.\n"
+    )
+
+    @admin_only
+    def patch(self, request, application_id, comment_id): 
+        try:
+            data    = json.loads(request.body)
+            user    = request.user
+            comment = Comment.objects.get(id=comment_id)
+
+            if not user.id == comment.user_id:
+                return JsonResponse({'message': 'NOT_AUTHORIZED'}, status=403)
+            
+            Comment.objects.filter(id=comment_id).update(
+                description    = data['description'],
+                score          = data['score']
+            )
+            
+            return JsonResponse({'message': 'SUCCESS'}, status=200)
+
+        except Comment.DoesNotExist:
+            return JsonResponse({'message': 'NOT_FOUND'}, status=404)
+    
+    @swagger_auto_schema (
+        manual_parameters = [parameter_token],
+        responses = {
+            "200": "SUCCESS",
+            "400": "BAD_REQUEST",
+            "401": "UNAUTHORIZED"
+        },
+        operation_id = "(관리자 전용) 지원서 코멘트 및 평가 삭제",
+        operation_description = "header에 토큰이, body에 description과 score입력이 필요합니다.\n"
+    )
+    
+    @admin_only
+    def delete(self, request, application_id, comment_id):
+        try:
+            comment = Comment.objects.get(id=comment_id)
+
+            if not request.user.id == comment.user_id:
+                return JsonResponse({'message': 'NOT_AUTHORIZED'}, status=403)
+
+            comment.delete()
+
+            return JsonResponse({"message": "SUCCESS"}, status=200)
+
+        except Comment.DoesNotExist:
+            return JsonResponse({'message': 'NOT_FOUND'}, status=404)
+
