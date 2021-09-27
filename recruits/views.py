@@ -57,13 +57,10 @@ class RecruitListView(APIView):
                 "id"             : recruit.id,
                 "position"       : recruit.position,
                 "position_title" : recruit.position_title,
-                "work_type"      : recruit.work_type,
                 "career_type"    : recruit.get_career_type_display(),
+                "work_type"      : recruit.work_type,
                 "author"         : recruit.author,
-                "job_openings"   : recruit.job_openings,
                 "description"    : recruit.description,
-                "minimum_salary" : recruit.minimum_salary,
-                "maximum_salary" : recruit.maximum_salary,
                 "deadline"       : recruit.deadline,
                 "created_at"     : recruit.created_at,
                 "updated_at"     : recruit.updated_at,
@@ -82,7 +79,7 @@ class RecruitListView(APIView):
             "401": "UNAUTHORIZED"
         },
         operation_id = "채용공고 생성",
-        operation_description = "포지션, 설명, 기술스택, 근무타입(정규직/계약직), 경력타입(신입or경력or신입/경력), 채용인원, 모집마감일, 최소/최대 연봉을 body에 담아 보내주세요."
+        operation_description = "포지션(develop, design, marketing), 설명, 근무타입(정규직/계약직), 경력타입(신입or경력or신입/경력), 모집마감일을 body에 담아 보내주세요."
     )
     @admin_only
     def post(self, request):
@@ -90,50 +87,31 @@ class RecruitListView(APIView):
             career_type_choices = {
                 "신입": "N",
                 "경력": "C",
-                "신입/경력": "NC",
+                "신입/경력": "NC"
             }
 
             data           = json.loads(request.body)
             position       = data["position"]
             position_title = data["position_title"]
             description    = data["description"]
-            stack_names    = data["stacks"]
-            job_openings   = data["job_openings"]
             work_type      = data["work_type"]
             career_type    = data["career_type"] if data["career_type"] else "신입/경력"
             deadline       = data["deadline"]
-            minimum_salary = data["minimum_salary"]
-            maximum_salary = data["maximum_salary"]
 
             author = request.user.email
 
             if not (career_type in career_type_choices):
                 return JsonResponse({"message": "INVALID_CAREER_TYPE"}, status=400)
 
-            stacks = []
-            
-            for stack_name in stack_names:
-                s = hashlib.sha3_256()
-                s.update(stack_name.encode())
-                hash_id = s.hexdigest()
-
-                object, is_created = Stack.objects.get_or_create(hash_id=hash_id, name=stack_name)
-                stacks.append(object)
-
-            
-            recruit = Recruit.objects.create(
+            Recruit.objects.create(
                 position       = position,
                 position_title = position_title,
                 description    = description,
                 work_type      = work_type,
                 career_type    = career_type_choices[career_type],
-                job_openings   = job_openings,
                 author         = author,
-                deadline       = deadline if deadline else "9999-12-31",
-                minimum_salary = minimum_salary if minimum_salary else 0,
-                maximum_salary = maximum_salary if maximum_salary else 0
+                deadline       = deadline if deadline else "9999-12-31"
             )
-            recruit.stacks.add(*stacks)
 
             return JsonResponse({"message": "SUCCESS"}, status=201)
 
