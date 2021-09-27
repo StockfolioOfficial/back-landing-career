@@ -150,24 +150,23 @@ class RecruitAdminView(APIView):
                 "num_dev_recruits"       : Recruit.objects.filter(position = '개발').count(),
                 "num_design_recruits"    : Recruit.objects.filter(position = '디자인').count(),
                 "num_marketing_recruits" : Recruit.objects.filter(position = '마케터').count(),
-                "num_applicants"     : Application.objects.filter(recruits=Recruit.objects.get(id=recruit.id)).count(),
-                "id"                 : recruit.id,
-                "position"           : recruit.position,
-                "position_title"     : recruit.position_title,
-                "work_type"          : recruit.work_type,
-                "career_type"        : recruit.get_career_type_display(),
-                "author"             : recruit.author,
-                "author_name"        : User.objects.get(email=recruit.author).name if User.objects.get(email=recruit.author).name else recruit.author,
-                "job_openings"       : recruit.job_openings,
-                "description"        : recruit.description,
-                "minimum_salary"     : recruit.minimum_salary,
-                "maximum_salary"     : recruit.maximum_salary,
-                "deadline"           : recruit.deadline,
-                "created_at"         : recruit.created_at,
-                "updated_at"         : recruit.updated_at,
-                "stacks"             : [ stack.name for stack in recruit.stacks.all() ]
+                "num_applicants"         : Application.objects.filter(recruits=Recruit.objects.get(id=recruit.id)).count(),
+                "id"                     : recruit.id,
+                "position"               : recruit.position,
+                "position_title"         : recruit.position_title,
+                "work_type"              : recruit.work_type,
+                "career_type"            : recruit.get_career_type_display(),
+                "author"                 : recruit.author,
+                "author_name"            : User.objects.get(email=recruit.author).name if User.objects.get(email=recruit.author).name else recruit.author,
+                "job_openings"           : recruit.job_openings,
+                "description"            : recruit.description,
+                "minimum_salary"         : recruit.minimum_salary,
+                "maximum_salary"         : recruit.maximum_salary,
+                "deadline"               : recruit.deadline,
+                "created_at"             : recruit.created_at,
+                "updated_at"             : recruit.updated_at,
+                "stacks"                 : [ stack.name for stack in recruit.stacks.all() ]
             }
-
             return JsonResponse({"result": result}, status=200)
 
         except Recruit.DoesNotExist:
@@ -398,7 +397,6 @@ class AdmipageDashboardView(APIView):
 
         except Recruit.DoesNotExist:
             return JsonResponse({"message": "RECRUIT_NOT_FOUND"}, status=404)  
-
 
 # 어드민 페이지 공고 조회 (직무별 / 최신순)
 class AdminRecruitListView(APIView):
