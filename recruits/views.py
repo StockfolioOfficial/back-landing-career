@@ -289,7 +289,6 @@ class RecruitView(APIView):
             return JsonResponse({"message": "NOT_FOUND"}, status=404)
 
 
-#어드민 페이지 대시보드
 class AdmipageDashboardView(APIView):
     parameter_token = openapi.Parameter (
                                         "Authorization", 
@@ -321,13 +320,13 @@ class AdmipageDashboardView(APIView):
 
             applicant         = Application.objects.values_list("created_at", flat=True).distinct()
             today_applicant   = [a for a in applicant if a >= before_day]       
-            progress          = Recruit.objects.filter(deadline__gte=datetime.now())
+            recruit_progress  = Recruit.objects.filter(deadline__gte=datetime.now())
             new_progress      = Recruit.objects.filter(created_at__range=[before_weeks,today_standard])
             deadline_progress = Recruit.objects.filter(deadline__range=[after_weeks,today_standard])
 
             results = {
                     "today_applicant"  : len(today_applicant),
-                    "progress_recruit" : progress.count(),
+                    "progress_recruit" : recruit_progress.count(),
                     "new_recruit"      : new_progress.count(),
                     "deadline_recruit" : deadline_progress.count()
                 }
@@ -338,7 +337,6 @@ class AdmipageDashboardView(APIView):
             return JsonResponse({"message": "RECRUIT_NOT_FOUND"}, status=404)  
 
 
-# 어드민 페이지 공고 조회 (직무별 / 최신순)
 class AdminRecruitListView(APIView):
     parameter_token = openapi.Parameter (
                                         "Authorization", 
@@ -389,7 +387,7 @@ class AdminRecruitListView(APIView):
         ]
         return JsonResponse({"results": results}, status=200)
 
-# 어드민 페이지 내부 공고조회
+
 class AdminPageRecruitView(APIView):
     parameter_token = openapi.Parameter (
                                         "Authorization", 

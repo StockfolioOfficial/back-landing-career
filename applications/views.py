@@ -1,6 +1,6 @@
 import boto3
 import json
-import uuid, datetime, argparse, parser
+import uuid, datetime
 
 from datetime             import date, datetime, timedelta
 from django.db.models     import Q
@@ -563,7 +563,7 @@ class ApplicatorAdminView(APIView):
                 total        = ((end_date - start_date).days)
                 years        = int(total) // 365
                 months       = int(total) %365/30
-            return '%d년 %d개월' % (years, months)
+            return '%d년'% (years), '%d개월' % (months)
         except Exception as e:
             print(e)
             return "경력 없음"
@@ -605,7 +605,7 @@ class RecruitApplicatorView(APIView):
         "position_title"    : [recruit.position_title for recruit in Recruit.objects.filter(applications=application)],
         "career_type"       : [recruit.get_career_type_display() for recruit in Recruit.objects.filter(applications=application)],
         "log"               : ApplicationAccessLog.objects.filter(user_id=request.user.id, application_id=application.id).exists(),           
-        "career"          : self.career(application=application),
+        "career_date"          : self.career(application=application),
         } for application in applications]         
         return JsonResponse({'results': results}, status=200)
 
@@ -618,7 +618,7 @@ class RecruitApplicatorView(APIView):
                 total        = ((end_date - start_date).days)
                 years        = int(total) // 365
                 months       = int(total) %365/30
-            return '%d년 %d개월' % (years, months)
+            return '%d년'% (years), '%d개월' % (months)
         except Exception as e:
             print(e)
             return "경력 없음"
