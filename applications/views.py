@@ -150,7 +150,7 @@ class ApplicationView(APIView):
             application.recruits.add(recruit)
             
             if '' == (application.content['career'][0]['leavingDate'] and application.content['career'][0]['joinDate']) and application.content['basicInfo']['phoneNumber']:
-                return JsonResponse ({"message":"DATA_NULL"}, status=400)    
+                return JsonResponse ({"message":"DATA_NOT_FOUND"}, status=404)    
 
             Attachment.objects.create(
                 file_url    = file_url,
