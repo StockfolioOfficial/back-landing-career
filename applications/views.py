@@ -36,7 +36,7 @@ class CloudStorage:
             )
 
     def upload_file(self, file):
-        file_key = str(uuid.uuid1()) +"_"+ file.name
+        file_key = str(uuid.uuid1()) + file.name
         self.client.upload_fileobj(
                         file,
                         self.BUCKET_NAME,
