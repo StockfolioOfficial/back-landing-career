@@ -314,23 +314,15 @@ class AdmipageDashboardView(APIView):
     @admin_only
     def get(self, request):
         try:           
-            # 날짜 기준
             today_standard = datetime.now()
             before_day     = today_standard - timedelta(days=1)
             before_weeks   = today_standard - timedelta(weeks=1) 
             after_weeks    = today_standard + timedelta(weeks=1)
 
-            #오늘의 지원자
-            applicant       = Application.objects.values_list("created_at", flat=True).distinct()
-            today_applicant = [a for a in applicant if a >= before_day]       
-
-            #진행중공고
-            progress = Recruit.objects.filter(deadline__gte=datetime.now())
-            
-            #새로 등록된 공고
-            new_progress = Recruit.objects.filter(created_at__range=[before_weeks,today_standard])
-
-            #마감 임박 공고
+            applicant         = Application.objects.values_list("created_at", flat=True).distinct()
+            today_applicant   = [a for a in applicant if a >= before_day]       
+            progress          = Recruit.objects.filter(deadline__gte=datetime.now())
+            new_progress      = Recruit.objects.filter(created_at__range=[before_weeks,today_standard])
             deadline_progress = Recruit.objects.filter(deadline__range=[after_weeks,today_standard])
 
             results = {
