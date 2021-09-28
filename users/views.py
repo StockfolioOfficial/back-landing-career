@@ -335,7 +335,6 @@ class SuperAdminView(APIView):
                 email    = data['email'],
                 password = hashed_password.decode('utf-8'),
                 role     = 'admin',
-                # username = data.get('name') if data.get('name') else email.split('@')[0]
                 name = data['username'],
             )
 

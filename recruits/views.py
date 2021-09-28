@@ -98,7 +98,7 @@ class RecruitListView(APIView):
             career_type    = data["career_type"] if data["career_type"] else "신입/경력"
             deadline       = data["deadline"]
 
-            author = request.user.email
+            author = request.user.name if request.user.name else request.user.email.split('@')[0]
 
             if not (career_type in career_type_choices):
                 return JsonResponse({"message": "INVALID_CAREER_TYPE"}, status=400)
