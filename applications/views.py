@@ -1,8 +1,8 @@
 import boto3
 import json
-import uuid
+import uuid, datetime
 
-from datetime             import datetime
+from datetime             import date, datetime, timedelta
 from django.db.models     import Q
 from django.http          import JsonResponse
 from drf_yasg             import openapi
@@ -12,9 +12,9 @@ from rest_framework.views import APIView
 
 from core.decorators          import login_required, admin_only
 from global_variable          import ADMIN_TOKEN, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, BUCKET_NAME
-from recruits.models          import Recruit
+from recruits.models          import Recruit, RecruitApplication
 from users.models             import User
-from applications.models      import Application, Attachment, Comment
+from applications.models      import Application, ApplicationAccessLog, Attachment, Comment
 from applications.serializers import ApplicationSerializer, ApplicationAdminSerializer, ApplicationAdminPatchSerializer, CommentAdminSerializer
 
 class CloudStorage:
@@ -350,6 +350,11 @@ class ApplicationAdminDetailView(APIView):
                 'deadline'      : Recruit.objects.get(applications=application).deadline
             }
 
+        ApplicationAccessLog.objects.create(   
+                user_id        = request.user.id,
+                application_id = application_id,
+            )
+
         return JsonResponse({'results': results}, status=200)
     
     @swagger_auto_schema (
@@ -377,6 +382,7 @@ class ApplicationAdminDetailView(APIView):
 
         except Application.DoesNotExist:
             return JsonResponse({'message': 'APPLICATION_NOT_FOUND'}, status=404)
+
 
 
 class CommentAdminView(APIView):
@@ -509,4 +515,5 @@ class CommentAdminModifyView(APIView):
 
         except Comment.DoesNotExist:
             return JsonResponse({'message': 'NOT_FOUND'}, status=404)
+
 
