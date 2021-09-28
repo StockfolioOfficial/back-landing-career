@@ -540,38 +540,33 @@ class ApplicatorAdminView(APIView):
 
     @admin_only
     def get(self, request):
-
         applications = Application.objects.all().order_by('-created_at')
+        results = [{
+            "application_id"    : application.id,
+            "created_at"        : application.created_at,
+            "user_name"         : application.user.name if application.user.name else application.user.email.split('@')[0],
+            "user_email"        : application.user.email,
+            "user_phoneNumber"  : application.content['basicInfo']['phoneNumber'],
+            "position_title"    : [recruit.position_title for recruit in Recruit.objects.filter(applications=application)],
+            "career_type"       : [recruit.get_career_type_display() for recruit in Recruit.objects.filter(applications=application)],
+            "log"               : ApplicationAccessLog.objects.filter(user_id=request.user.id, application_id=application.id).exists(),           
+            "career_date"       : self.career(application=application),
+        } for application in applications]         
+        return JsonResponse({'results': results}, status=200)
 
-        for application in applications:
-           for i in range(0,len(application.content['career'])): 
-            total = 0
-            try:
+    def career(self, application):
+        try:
+            for i in range(0,len(application.content['career'])): 
+                total = 0
                 end_date     = datetime.strptime(application.content['career'][i]['leavingDate'],"%Y/%m/%d")
                 start_date   = datetime.strptime(application.content['career'][i]['joinDate'],"%Y/%m/%d")
                 total        = ((end_date - start_date).days)
                 years        = int(total) // 365
                 months       = int(total) %365/30
-                career_total = [years, int(months)]
-
-                results = [{
-                    "application_id"    : application.id,
-                    "created_at"        : application.created_at,
-                    "user_name"         : application.user.name if application.user.name else application.user.email.split('@')[0],
-                    "user_email"        : application.user.email,
-                    "user_phoneNumber"  : application.content['basicInfo']['phoneNumber'],
-                    "position_title"    : [recruit.position_title for recruit in Recruit.objects.filter(applications=application)],
-                    "career_type"       : [recruit.get_career_type_display() for recruit in Recruit.objects.filter(applications=application)],
-                    "log"               : ApplicationAccessLog.objects.filter(user_id=request.user.id, application_id=application.id).exists(),           
-                    "career_date"       : career_total,
-                } for application in applications]         
-                return JsonResponse({'results': results}, status=200)
-
-            except Exception as e:
-                if e != 0:
-                    return e == 0
-                return JsonResponse({'results': results}, status=200)
-
+            return '%d년'% (years), '%d개월' % (months)
+        except Exception as e:
+            print(e)
+            return "경력 없음"
 
 class RecruitApplicatorView(APIView): 
     parameter_token = openapi.Parameter (
@@ -600,32 +595,30 @@ class RecruitApplicatorView(APIView):
 
         applications = Application.objects.filter(recruits=Recruit.objects.get(id=recruit_id)).order_by('-created_at')
 
-        for application in applications:
-           for i in range(0,len(application.content['career'])): 
-            total = 0
-            try:
+        results = [{
+        "recruit_id"        : recruit_id,
+        "application_id"    : application.id,
+        "created_at"        : application.created_at,
+        "user_name"         : application.user.name if application.user.name else application.user.email.split('@')[0],
+        "user_email"        : application.user.email,
+        "user_phoneNumber"  : application.content['basicInfo']['phoneNumber'],
+        "position_title"    : [recruit.position_title for recruit in Recruit.objects.filter(applications=application)],
+        "career_type"       : [recruit.get_career_type_display() for recruit in Recruit.objects.filter(applications=application)],
+        "log"               : ApplicationAccessLog.objects.filter(user_id=request.user.id, application_id=application.id).exists(),           
+        "career_date"          : self.career(application=application),
+        } for application in applications]         
+        return JsonResponse({'results': results}, status=200)
+
+    def career(self, application):
+        try:
+            for i in range(0,len(application.content['career'])): 
+                total = 0
                 end_date     = datetime.strptime(application.content['career'][i]['leavingDate'],"%Y/%m/%d")
                 start_date   = datetime.strptime(application.content['career'][i]['joinDate'],"%Y/%m/%d")
                 total        = ((end_date - start_date).days)
                 years        = int(total) // 365
                 months       = int(total) %365/30
-                career_total = [years, int(months)]
-
-                results = [{
-                "recruit_id"        : recruit_id,
-                "application_id"    : application.id,
-                "created_at"        : application.created_at,
-                "user_name"         : application.user.name if application.user.name else application.user.email.split('@')[0],
-                "user_email"        : application.user.email,
-                "user_phoneNumber"  : application.content['basicInfo']['phoneNumber'],
-                "position_title"    : [recruit.position_title for recruit in Recruit.objects.filter(applications=application)],
-                "career_type"       : [recruit.get_career_type_display() for recruit in Recruit.objects.filter(applications=application)],
-                "log"               : ApplicationAccessLog.objects.filter(user_id=request.user.id, application_id=application.id).exists(),           
-                "career"          : career_total,
-                } for application in applications]         
-                return JsonResponse({'results': results}, status=200)
-
-            except Exception as e:
-                if e != 0:
-                    return e == 0
-                return JsonResponse({'results': results}, status=200)
+            return '%d년'% (years), '%d개월' % (months)
+        except Exception as e:
+            print(e)
+            return "경력 없음"
