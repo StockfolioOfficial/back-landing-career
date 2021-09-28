@@ -37,5 +37,4 @@ class Comment(TimeStampModel):
 class ApplicationAccessLog(models.Model):
     user        = models.ForeignKey('users.User', on_delete=models.CASCADE)
     application = models.ForeignKey('Application', on_delete=models.CASCADE)
-    log_at      = models.DateTimeField(auto_now_add=True)           
-
+    log_at      = models.DateTimeField(auto_now_add=True)                
