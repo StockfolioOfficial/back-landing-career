@@ -516,7 +516,6 @@ class CommentAdminModifyView(APIView):
         except Comment.DoesNotExist:
             return JsonResponse({'message': 'NOT_FOUND'}, status=404)
 
-
 class ApplicatorAdminView(APIView):
     parameter_token = openapi.Parameter (
                                         "Authorization", 
