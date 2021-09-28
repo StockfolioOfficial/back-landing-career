@@ -9,7 +9,7 @@ from rest_framework.views import APIView
 from sendgrid.helpers.mail import *
 
 from core.decorators   import login_required, admin_only, superadmin_only
-from global_variable   import SECRET_KEY, ALGORITHM, SENDGRID_API_KEY, EMAIL_DOMAIN
+from global_variable   import SECRET_KEY, ALGORITHM, SENDGRID_API_KEY, EMAIL_DOMAIN, ADMIN_TOKEN
 from users.models      import User, UserTemp
 from recruits.models   import Recruit
 from users.validation  import validate_email, validate_password
@@ -90,7 +90,7 @@ class SigninView(APIView):
             access_token = jwt.encode({'user_id': user.id, 'role': user.role}, SECRET_KEY, ALGORITHM)
             user_name  = user.name if user.name else email.split('@')[0]
 
-            return JsonResponse({'access_token': access_token, 'is_applied': None, 'user_name' : user_name}, status=200)
+            return JsonResponse({'access_token': access_token, 'is_applied': None, 'user_name' : user_name, 'role': user.role}, status=200)
         
         encoded_password = password.encode('utf-8')
         hashed_password  = user.password.encode('utf-8')
@@ -100,7 +100,7 @@ class SigninView(APIView):
             is_applied = Recruit.objects.get(id=recruit_id).applications.filter(user=user).exists() if recruit_id else None
             user_name  = user.name if user.name else email.split('@')[0]
 
-            return JsonResponse({'access_token': access_token, 'is_applied': is_applied, 'user_name' : user_name}, status=200)
+            return JsonResponse({'access_token': access_token, 'is_applied': is_applied, 'user_name' : user_name, 'role': user.role}, status=200)
 
         return JsonResponse({'message': 'INVALID_PASSWORD'}, status=400)            
 
@@ -272,7 +272,8 @@ class SuperAdminView(APIView):
                                         "Authorization", 
                                         openapi.IN_HEADER, 
                                         description = "access_token", 
-                                        type        = openapi.TYPE_STRING
+                                        type        = openapi.TYPE_STRING,
+                                        default     = ADMIN_TOKEN
     )
 
     supaeradmin_get_response = openapi.Response("result", SuperadminGetSerializer)
@@ -293,7 +294,7 @@ class SuperAdminView(APIView):
         result = [{
             "id"        : admin.id,
             "email"     : admin.email,
-            "name"      : admin.name if admin.name else admin.email.split('@')[0],
+            "username"  : admin.name if admin.name else admin.email.split('@')[0],
             "created_at": admin.created_at,
             "updated_at": admin.updated_at,
             "password"  : '********'
@@ -334,7 +335,7 @@ class SuperAdminView(APIView):
                 email    = data['email'],
                 password = hashed_password.decode('utf-8'),
                 role     = 'admin',
-                name     = data.get('name') if data.get('name') else email.split('@')[0]
+                name = data['username'],
             )
 
             return JsonResponse({"message": "SUCCESS"}, status=200)
@@ -347,7 +348,8 @@ class SuperAdminModifyView(APIView):
                                         "Authorization", 
                                         openapi.IN_HEADER, 
                                         description = "access_token", 
-                                        type        = openapi.TYPE_STRING
+                                        type        = openapi.TYPE_STRING,
+                                        default     = ADMIN_TOKEN
     )
 
     @swagger_auto_schema (
