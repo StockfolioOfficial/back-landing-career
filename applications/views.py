@@ -629,5 +629,3 @@ class RecruitApplicatorView(APIView):
                 if e != 0:
                     return e == 0
                 return JsonResponse({'results': results}, status=200)
-
-
