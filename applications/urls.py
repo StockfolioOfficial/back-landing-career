@@ -1,16 +1,17 @@
 from django.urls import path
 
-from applications.views import ApplicationAdminListView, ApplicationView, ApplicationAdminDetailView,\
-     CommentAdminView,CommentAdminModifyView, ApplicatorAdminView, RecruitApplicatorView
+from applications.views import  ApplicationView, AdminApplicationDetailView, AdminApplicationListView,\
+    RecentApplicantsListView, RecruitApplicantsListView, AdminCommentView, AdminCommentModifyView
 
 urlpatterns = [
     path('/user/<int:recruit_id>', ApplicationView.as_view()),
-    path('/detail/<int:application_id>', ApplicationAdminDetailView.as_view()),
-    
-    path('/admin/list', ApplicationAdminListView.as_view()),
-    path('/admin/<int:recruit_id>', RecruitApplicatorView.as_view()),
-    path('/admin/applicator',ApplicatorAdminView.as_view()),
+    path('/admin/<int:application_id>', AdminApplicationDetailView.as_view()),
 
-    path('/comments/<int:application_id>', CommentAdminView.as_view()),
-    path('/comments/<int:application_id>/<int:comment_id>', CommentAdminModifyView.as_view()),
+    path('/admin', AdminApplicationListView.as_view()),
+    path('/admin/recent',RecentApplicantsListView.as_view()),
+    
+    path('/admin/recruits/<int:recruit_id>', RecruitApplicantsListView.as_view()),
+
+    path('/admin/<int:application_id>/comments', AdminCommentView.as_view()),
+    path('/admin/<int:application_id>/comment/<int:comment_id>', AdminCommentModifyView.as_view()),
 ]

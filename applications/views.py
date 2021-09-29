@@ -82,7 +82,7 @@ class ApplicationView(APIView):
             "404": "NOT_FOUND",
             "401": "UNAUTHORIZED"
         },
-        operation_id          = "해당 공고에 대한 지원서 조회",
+        operation_id          = "(관리자 전용) 해당 공고에 대한 지원서 조회",
         operation_description = "header에 토큰이 필요합니다."
     )
 
@@ -115,7 +115,7 @@ class ApplicationView(APIView):
             "401": "UNAUTHORIZED",
             "400": "BAD_REQUEST"
         },
-        operation_id          = "해당 공고에 대한 지원서 생성",
+        operation_id          = "(관리자 전용) 해당 공고에 대한 지원서 생성",
         operation_description = "header에 토큰이 필요합니다.\n"+
                                 "formData에 json형식의 데이터가 필요합니다.\n"+
                                 "formData에 파일을 첨부할 수 있습니다."
@@ -171,7 +171,7 @@ class ApplicationView(APIView):
             "401": "UNAUTHORIZED",
             "400": "BAD_REQUEST"
         },
-        operation_id          = "해당 공고에 대한 지원서 수정",
+        operation_id          = "(관리자 전용) 해당 공고에 대한 지원서 수정",
         operation_description = "header에 토큰이 필요합니다.\n"+
                                 "formData에 json형식의 수정 데이터가 필요합니다.\n"+
                                 "formData에 파일을 첨부할 수 있습니다."
@@ -217,7 +217,7 @@ class ApplicationView(APIView):
             "404": "NOT_FOUND",
             "401": "UNAUTHORIZED",
         },
-        operation_id = "해당 공고에 대한 지원서 삭제",
+        operation_id = "(관리자 전용) 해당 공고에 대한 지원서 삭제",
         operation_description = "header에 토큰이 필요합니다"
     )
     
@@ -238,67 +238,7 @@ class ApplicationView(APIView):
         except Application.DoesNotExist:
             return JsonResponse({"message": "APPLICATION_NOT_FOUND"}, status=404)
 
-class ApplicationAdminListView(APIView):
-    parameter_token = openapi.Parameter (
-                                        "Authorization",
-                                        openapi.IN_HEADER,
-                                        description = "access_token", 
-                                        type        = openapi.TYPE_STRING,
-                                        default     = ADMIN_TOKEN
-    )
-    
-    application_admin_response = openapi.Response("result", ApplicationAdminSerializer)
-
-    @swagger_auto_schema (
-        manual_parameters = [parameter_token],
-        responses = {
-            "200": application_admin_response,
-            "400": "BAD_REQUEST",
-            "401": "UNAUTHORIZED",
-        },
-        operation_id = "(관리자 전용) 지원목록 조회",
-        operation_description = "header에 토큰이 필요합니다."
-    )
-
-    @admin_only
-    def get(self, request):
-        career_type       = request.GET.get('career_type', None)
-        position_title    = request.GET.get('position', None)
-        status            = request.GET.get('status', None)
-
-        q = Q()
-
-        if career_type:
-            q.add(Q(recruits__career_type = career_type), q.AND)
-        
-        if position_title:
-            q.add(Q(recruits__position_title = position_title), q.AND)
-
-        if status:
-            q.add(Q(status = status), q.AND)
-
-        applications = Application.objects.filter(q).order_by('-created_at')
-
-        results = [
-            {
-                'content'       : application.content,
-                'status'        : application.status,
-                'created_at'    : application.created_at,
-                'updated_at'    : application.updated_at,
-                'recruit_id'    : [recruits.id for recruits in application.recruits.all()],
-                'job_openings'  : [recruits.job_openings for recruits in application.recruits.all()],
-                'author'        : [recruits.author for recruits in application.recruits.all()],
-                'work_type'     : [recruits.work_type for recruits in application.recruits.all()],
-                'career_type'   : [recruits.get_career_type_display() for recruits in application.recruits.all()],
-                'position_title': [recruit.position_title for recruit in application.recruits.all()],
-                'position'      : [recruits.position for recruits in application.recruits.all()],
-                'deadline'      : [recruits.deadline for recruits in application.recruits.all()]
-            }
-        for application in applications]
-
-        return JsonResponse({'results': results}, status=200)
-
-class ApplicationAdminDetailView(APIView):
+class AdminApplicationDetailView(APIView):
     parameter_token = openapi.Parameter (
                                         "Authorization", 
                                         openapi.IN_HEADER, 
@@ -384,9 +324,174 @@ class ApplicationAdminDetailView(APIView):
         except Application.DoesNotExist:
             return JsonResponse({'message': 'APPLICATION_NOT_FOUND'}, status=404)
 
+class AdminApplicationListView(APIView):
+    parameter_token = openapi.Parameter (
+                                        "Authorization",
+                                        openapi.IN_HEADER,
+                                        description = "access_token", 
+                                        type        = openapi.TYPE_STRING,
+                                        default     = ADMIN_TOKEN
+    )
+    
+    application_admin_response = openapi.Response("result", ApplicationAdminSerializer)
 
+    @swagger_auto_schema (
+        manual_parameters = [parameter_token],
+        responses = {
+            "200": application_admin_response,
+            "400": "BAD_REQUEST",
+            "401": "UNAUTHORIZED",
+        },
+        operation_id = "(관리자 전용) 지원목록 조회",
+        operation_description = "header에 토큰이 필요합니다."
+    )
 
-class CommentAdminView(APIView):
+    @admin_only
+    def get(self, request):
+        career_type       = request.GET.get('career_type', None)
+        position_title    = request.GET.get('position', None)
+        status            = request.GET.get('status', None)
+
+        q = Q()
+
+        if career_type:
+            q.add(Q(recruits__career_type = career_type), q.AND)
+        
+        if position_title:
+            q.add(Q(recruits__position_title = position_title), q.AND)
+
+        if status:
+            q.add(Q(status = status), q.AND)
+
+        applications = Application.objects.filter(q).order_by('-created_at')
+
+        results = [
+            {
+                'content'       : application.content,
+                'status'        : application.status,
+                'created_at'    : application.created_at,
+                'updated_at'    : application.updated_at,
+                'recruit_id'    : [recruits.id for recruits in application.recruits.all()],
+                'job_openings'  : [recruits.job_openings for recruits in application.recruits.all()],
+                'author'        : [recruits.author for recruits in application.recruits.all()],
+                'work_type'     : [recruits.work_type for recruits in application.recruits.all()],
+                'career_type'   : [recruits.get_career_type_display() for recruits in application.recruits.all()],
+                'position_title': [recruit.position_title for recruit in application.recruits.all()],
+                'position'      : [recruits.position for recruits in application.recruits.all()],
+                'deadline'      : [recruits.deadline for recruits in application.recruits.all()]
+            }
+        for application in applications]
+
+        return JsonResponse({'results': results}, status=200)
+
+class RecentApplicantsListView(APIView):
+    parameter_token = openapi.Parameter (
+                                        "Authorization", 
+                                        openapi.IN_HEADER, 
+                                        description = "access_token", 
+                                        type        = openapi.TYPE_STRING,
+                                        default     = ADMIN_TOKEN
+    )
+   
+    application_admin_response = openapi.Response("result", ApplicationAdminSerializer)
+
+    @swagger_auto_schema (
+        manual_parameters = [parameter_token],
+        responses         = {
+            "200": application_admin_response,
+            "400": "BAD_REQUEST",
+            "401": "UNAUTHORIZED"
+        },
+        operation_id          = "(관리자 전용) 최근 지원자 뷰",
+        operation_description = "header에 토큰이 필요합니다." 
+    )
+
+    @admin_only
+    def get(self, request):
+        applications = Application.objects.all().order_by('-created_at')
+        results      = [{
+            "application_id"    : application.id,
+            "created_at"        : application.created_at,
+            "user_name"         : application.user.name if application.user.name else application.user.email.split('@')[0],
+            "user_email"        : application.user.email,
+            "user_phoneNumber"  : application.content['basicInfo']['phoneNumber'],
+            "position_title"    : [recruit.position_title for recruit in Recruit.objects.filter(applications=application)],
+            "career_type"       : [recruit.get_career_type_display() for recruit in Recruit.objects.filter(applications=application)],
+            "log"               : ApplicationAccessLog.objects.filter(user_id=request.user.id, application_id=application.id).exists(),           
+            "career_date"       : self.career(application=application),
+        } for application in applications]         
+        return JsonResponse({'results': results}, status=200)
+
+    def career(self, application):
+        try:
+            for i in range(0,len(application.content['career'])): 
+                total        = 0
+                end_date     = datetime.strptime(application.content['career'][i]['leavingDate'],"%Y/%m/%d")
+                start_date   = datetime.strptime(application.content['career'][i]['joinDate'],"%Y/%m/%d")
+                total        = ((end_date - start_date).days)
+                years        = int(total) // 365
+                months       = int(total) %365/30
+            return '%d년'% (years),'%d개월' % (months)
+        except Exception as e:
+            print(e)
+            return "경력 없음"
+
+class RecruitApplicantsListView(APIView): 
+    parameter_token = openapi.Parameter (
+                                        "Authorization",
+                                        openapi.IN_HEADER,
+                                        description = "access_token", 
+                                        type        = openapi.TYPE_STRING,
+                                        default     = ADMIN_TOKEN
+    )
+    
+    application_admin_response = openapi.Response("result", ApplicationAdminSerializer)
+
+    @swagger_auto_schema (
+        manual_parameters = [parameter_token],
+        responses         = {
+            "200": application_admin_response,
+            "400": "BAD_REQUEST",
+            "401": "UNAUTHORIZED",
+        },
+        operation_id          = "(관리자 전용) 특정 공고의 지원자 목록 조회",
+        operation_description = "header에 토큰이 필요합니다."
+    )
+
+    @admin_only
+    def get(self, request,recruit_id):
+
+        applications = Application.objects.filter(recruits=Recruit.objects.get(id=recruit_id)).order_by('-created_at')
+
+        results = [{
+        "recruit_id"        : recruit_id,
+        "application_id"    : application.id,
+        "created_at"        : application.created_at,
+        "user_name"         : application.user.name if application.user.name else application.user.email.split('@')[0],
+        "user_email"        : application.user.email,
+        "user_phoneNumber"  : application.content['basicInfo']['phoneNumber'],
+        "position_title"    : [recruit.position_title for recruit in Recruit.objects.filter(applications=application)],
+        "career_type"       : [recruit.get_career_type_display() for recruit in Recruit.objects.filter(applications=application)],
+        "log"               : ApplicationAccessLog.objects.filter(user_id=request.user.id, application_id=application.id).exists(),           
+        "career_date"       : self.career(application = application),
+        } for application in applications]         
+        return JsonResponse({'results': results}, status=200)
+
+    def career(self, application):
+        try:
+            for i in range(0,len(application.content['career'])): 
+                total        = 0
+                end_date     = datetime.strptime(application.content['career'][i]['leavingDate'],"%Y/%m/%d")
+                start_date   = datetime.strptime(application.content['career'][i]['joinDate'],"%Y/%m/%d")
+                total        = ((end_date - start_date).days)
+                years        = int(total) // 365
+                months       = int(total) %365/30
+            return '%d년'% (years),'%d개월' % (months)
+        except Exception as e:
+            print(e)
+            return "경력 없음"
+
+class AdminCommentView(APIView):
     parameter_token = openapi.Parameter (
                                         "Authorization", 
                                         openapi.IN_HEADER, 
@@ -450,7 +555,7 @@ class CommentAdminView(APIView):
 
         return JsonResponse({'message': 'SUCCESS'}, status=200)
     
-class CommentAdminModifyView(APIView):
+class AdminCommentModifyView(APIView):
     parameter_token = openapi.Parameter (
                                         "Authorization", 
                                         openapi.IN_HEADER, 
@@ -517,109 +622,3 @@ class CommentAdminModifyView(APIView):
         except Comment.DoesNotExist:
             return JsonResponse({'message': 'NOT_FOUND'}, status=404)
 
-class ApplicatorAdminView(APIView):
-    parameter_token = openapi.Parameter (
-                                        "Authorization", 
-                                        openapi.IN_HEADER, 
-                                        description = "access_token", 
-                                        type        = openapi.TYPE_STRING,
-                                        default     = ADMIN_TOKEN
-    )
-   
-    application_admin_response = openapi.Response("result", ApplicationAdminSerializer)
-
-    @swagger_auto_schema (
-        manual_parameters = [parameter_token],
-        responses         = {
-            "200": application_admin_response,
-            "400": "BAD_REQUEST",
-            "401": "UNAUTHORIZED"
-        },
-        operation_id          = "어드민페이지 최근 지원자 뷰",
-        operation_description = "header에 토큰이 필요합니다." 
-    )
-
-    @admin_only
-    def get(self, request):
-        applications = Application.objects.all().order_by('-created_at')
-        results      = [{
-            "application_id"    : application.id,
-            "created_at"        : application.created_at,
-            "user_name"         : application.user.name if application.user.name else application.user.email.split('@')[0],
-            "user_email"        : application.user.email,
-            "user_phoneNumber"  : application.content['basicInfo']['phoneNumber'],
-            "position_title"    : [recruit.position_title for recruit in Recruit.objects.filter(applications=application)],
-            "career_type"       : [recruit.get_career_type_display() for recruit in Recruit.objects.filter(applications=application)],
-            "log"               : ApplicationAccessLog.objects.filter(user_id=request.user.id, application_id=application.id).exists(),           
-            "career_date"       : self.career(application=application),
-        } for application in applications]         
-        return JsonResponse({'results': results}, status=200)
-
-    def career(self, application):
-        try:
-            for i in range(0,len(application.content['career'])): 
-                total        = 0
-                end_date     = datetime.strptime(application.content['career'][i]['leavingDate'],"%Y/%m/%d")
-                start_date   = datetime.strptime(application.content['career'][i]['joinDate'],"%Y/%m/%d")
-                total        = ((end_date - start_date).days)
-                years        = int(total) // 365
-                months       = int(total) %365/30
-            return '%d년 %d개월' % (years,months)
-        except Exception as e:
-            print(e)
-            return "경력 없음"
-
-class RecruitApplicatorView(APIView): 
-    parameter_token = openapi.Parameter (
-                                        "Authorization",
-                                        openapi.IN_HEADER,
-                                        description = "access_token", 
-                                        type        = openapi.TYPE_STRING,
-                                        default     = ADMIN_TOKEN
-    )
-    
-    application_admin_response = openapi.Response("result", ApplicationAdminSerializer)
-
-    @swagger_auto_schema (
-        manual_parameters = [parameter_token],
-        responses         = {
-            "200": application_admin_response,
-            "400": "BAD_REQUEST",
-            "401": "UNAUTHORIZED",
-        },
-        operation_id          = "(관리자 전용) 특정 공고의 지원자 목록 조회",
-        operation_description = "header에 토큰이 필요합니다."
-    )
-
-    @admin_only
-    def get(self, request,recruit_id):
-
-        applications = Application.objects.filter(recruits=Recruit.objects.get(id=recruit_id)).order_by('-created_at')
-
-        results = [{
-        "recruit_id"        : recruit_id,
-        "application_id"    : application.id,
-        "created_at"        : application.created_at,
-        "user_name"         : application.user.name if application.user.name else application.user.email.split('@')[0],
-        "user_email"        : application.user.email,
-        "user_phoneNumber"  : application.content['basicInfo']['phoneNumber'],
-        "position_title"    : [recruit.position_title for recruit in Recruit.objects.filter(applications=application)],
-        "career_type"       : [recruit.get_career_type_display() for recruit in Recruit.objects.filter(applications=application)],
-        "log"               : ApplicationAccessLog.objects.filter(user_id=request.user.id, application_id=application.id).exists(),           
-        "career_date"       : self.career(application = application),
-        } for application in applications]         
-        return JsonResponse({'results': results}, status=200)
-
-    def career(self, application):
-        try:
-            for i in range(0,len(application.content['career'])): 
-                total        = 0
-                end_date     = datetime.strptime(application.content['career'][i]['leavingDate'],"%Y/%m/%d")
-                start_date   = datetime.strptime(application.content['career'][i]['joinDate'],"%Y/%m/%d")
-                total        = ((end_date - start_date).days)
-                years        = int(total) // 365
-                months       = int(total) %365/30
-            return '%d년 %d개월' % (years, months)
-        except Exception as e:
-            print(e)
-            return "경력 없음"
