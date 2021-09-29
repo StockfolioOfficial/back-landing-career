@@ -1,7 +1,7 @@
 from django.urls import path
 
 from recruits.views     import RecruitListView, RecruitView, AdminRecruitListView, AdminpageNumberView,  \
-     AdminPageRecruitListView, MyRecruitListView
+     AdminPageRecruitListView, MyRecruitListView, AdminRecruitDetailView
 
 
 urlpatterns = [
@@ -12,5 +12,5 @@ urlpatterns = [
     path('/admin/number', AdminpageNumberView.as_view()),
     path('/admin/list', AdminPageRecruitListView.as_view()),
     path('/admin/my', MyRecruitListView.as_view()),
-    #path('/admin/<int:recruit_id>', AdminRecruitDetailView.as_view())
+    path('/admin/<int:recruit_id>', AdminRecruitDetailView.as_view())
 ]
