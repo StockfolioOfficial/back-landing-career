@@ -1,28 +1,29 @@
 import json, bcrypt, jwt, binascii, os, sendgrid
 
-from django.utils         import timezone
-from django.http          import JsonResponse
-from drf_yasg             import openapi
-from drf_yasg.utils       import swagger_auto_schema
-from rest_framework.views import APIView
+from django.utils          import timezone
+from django.http           import JsonResponse
+from drf_yasg              import openapi
+from drf_yasg.utils        import swagger_auto_schema
+from rest_framework.views  import APIView
 
 from sendgrid.helpers.mail import *
 
-from core.decorators   import login_required, admin_only, superadmin_only
-from global_variable   import SECRET_KEY, ALGORITHM, SENDGRID_API_KEY, EMAIL_DOMAIN, ADMIN_TOKEN
-from users.models      import User, UserTemp
-from recruits.models   import Recruit
-from users.validation  import validate_email, validate_password
-from users.serializers import SigninBodySerializer, SignupBodySerializer, MyPageGetSerializer, MyPagePatchBodySerializer, VerificationSerializer, VerificationResponseSerializer, ChangePasswordSerializer, SuperadminGetSerializer, SuperadminPatchSerializer
+from core.decorators       import login_required, admin_only, superadmin_only
+from global_variable       import SECRET_KEY, ALGORITHM, SENDGRID_API_KEY, EMAIL_DOMAIN, ADMIN_TOKEN
+from users.models          import User, UserTemp
+from recruits.models       import Recruit
+from users.validation      import validate_email, validate_password
+from users.serializers     import SigninBodySerializer, SignupBodySerializer, MyPageGetSerializer, MyPagePatchBodySerializer, \
+     VerificationSerializer, VerificationResponseSerializer, ChangePasswordSerializer, SuperadminGetSerializer, SuperadminPatchSerializer
 
 class SignupView(APIView):
     @swagger_auto_schema (
         request_body = SignupBodySerializer, 
-        responses = {
+        responses    = {
             "201": "SUCCESS",
             "400": "BAD_REQUEST" 
         },
-        operation_id = "회원가입",
+        operation_id          = "회원가입",
         operation_description = "이메일(abc@def.com 등의 이메일 형식), 패스워드(영문, 숫자, 특수기호) validation이 적용되어 있습니다."
     )
     
@@ -48,7 +49,7 @@ class SignupView(APIView):
             encoded_password = data['password'].encode('utf-8')
             hashed_password  = bcrypt.hashpw(encoded_password, bcrypt.gensalt())
             
-            user = User.objects.create(
+            user         = User.objects.create(
                 email    = data['email'],
                 password = hashed_password.decode('utf-8'),
                 name     = data.get('name') if data.get('name') else email.split('@')[0]
@@ -64,11 +65,11 @@ class SignupView(APIView):
 class SigninView(APIView):
     @swagger_auto_schema (
         request_body = SigninBodySerializer,
-        responses = {
+        responses    = {
             "200": "SUCCESS",
             "400": "BAD_REQUEST"
         },
-        operation_id = "로그인",
+        operation_id          = "로그인",
         operation_description = "이메일과 비밀번호 입력이 필요합니다."
     )
     def post(self, request):
@@ -88,7 +89,7 @@ class SigninView(APIView):
             user.save()
 
             access_token = jwt.encode({'user_id': user.id, 'role': user.role}, SECRET_KEY, ALGORITHM)
-            user_name  = user.name if user.name else email.split('@')[0]
+            user_name    = user.name if user.name else email.split('@')[0]
 
             return JsonResponse({'access_token': access_token, 'is_applied': None, 'user_name' : user_name, 'role': user.role}, status=200)
         
@@ -97,8 +98,8 @@ class SigninView(APIView):
 
         if bcrypt.checkpw(encoded_password, hashed_password):
             access_token = jwt.encode({'user_id': user.id, 'role': user.role}, SECRET_KEY, ALGORITHM)
-            is_applied = Recruit.objects.get(id=recruit_id).applications.filter(user=user).exists() if recruit_id else None
-            user_name  = user.name if user.name else email.split('@')[0]
+            is_applied   = Recruit.objects.get(id = recruit_id).applications.filter(user = user).exists() if recruit_id else None
+            user_name    = user.name if user.name else email.split('@')[0]
 
             return JsonResponse({'access_token': access_token, 'is_applied': is_applied, 'user_name' : user_name, 'role': user.role}, status=200)
 
@@ -109,12 +110,12 @@ class VerificationView(APIView):
 
     @swagger_auto_schema (
         request_body = VerificationSerializer,
-        responses = {
+        responses    = {
             "200": verification_response,
             "400": "BAD_REQUEST",
             "404": "NOT_FOUND"
         },
-        operation_id = "비밀번호 찾기 위한 이메일 입력",
+        operation_id          = "비밀번호 찾기 위한 이메일 입력",
         operation_description = "유효한 이메일을 입력해주세요."
     )
     def post(self, request):
@@ -143,7 +144,7 @@ class VerificationView(APIView):
                         "subject": "인증 코드를 확인해 주세요."
                     }
                 ],
-                "from": {"email": f"noreply@{EMAIL_DOMAIN}"},
+                "from"   : {"email": f"noreply@{EMAIL_DOMAIN}"},
                 "content": [
                     {
                         "type" : "text/plain",
@@ -160,12 +161,12 @@ class VerificationView(APIView):
 
     @swagger_auto_schema (
         request_body = ChangePasswordSerializer,
-        responses = {
+        responses    = {
             "200": "SUCCESS",
             "400": "BAD_REQUEST",
             "404": "NOT_FOUND"
         },
-        operation_id = "비밀번호 변경",
+        operation_id          = "비밀번호 변경",
         operation_description = "이메일, 인증코드, 새로운 비밀번호를 입력하세요."
     )
     def patch(self, request):
@@ -175,7 +176,7 @@ class VerificationView(APIView):
             code         = data['code']
             new_password = data['new_password']
 
-            user_temp = UserTemp.objects.get(email=email)
+            user_temp    = UserTemp.objects.get(email=email)
             
             if user_temp.code != code:
                 return JsonResponse({'message': 'INVALID_CODE'}, status=400)
@@ -211,17 +212,17 @@ class UserMyPageView(APIView):
 
     @swagger_auto_schema (
         manual_parameters = [parameter_token],
-        responses = {
+        responses         = {
             "200": mypage_get_response,
             "400": "BAD_REQUEST",
             "401": "INVALID_TOKEN"
         },
-        operation_id = "회원정보 조회",
+        operation_id          = "회원정보 조회",
         operation_description = "header에 토큰이 필요합니다."
     )
     @login_required
     def get(self, request):    
-        user = request.user
+        user   = request.user
         
         result = {
             "email"     : user.email,
@@ -234,12 +235,12 @@ class UserMyPageView(APIView):
     @swagger_auto_schema (
         manual_parameters = [parameter_token],
         request_body      = MyPagePatchBodySerializer,
-        responses = {
+        responses         = {
             "200": "SUCCESS",
             "400": "BAD_REQUEST",
             "401": "INVALID_TOKEN"
         },
-        operation_id = "회원정보 수정",
+        operation_id          = "회원정보 수정",
         operation_description = "header에 토큰, body에 수정 값이 필요합니다."
     )
     @login_required
@@ -280,12 +281,12 @@ class SuperAdminView(APIView):
 
     @swagger_auto_schema (
         manual_parameters = [parameter_token],
-        responses = {
+        responses         = {
             "200": supaeradmin_get_response,
             "400": "BAD_REQUEST",
             "401": "INVALID_TOKEN"
         },
-        operation_id = "(슈퍼관리자 전용)어드민 정보 조회",
+        operation_id          = "(슈퍼관리자 전용)어드민 정보 조회",
         operation_description = "header에 토큰이 필요합니다."
     )
     @superadmin_only
@@ -305,12 +306,12 @@ class SuperAdminView(APIView):
     @swagger_auto_schema (
         manual_parameters = [parameter_token],
         request_body      = SignupBodySerializer,
-        responses = {
+        responses         = {
             "200": "SUCCESS",
             "400": "BAD_REQUEST",
             "401": "INVALID_TOKEN"
         },
-        operation_id = "(슈퍼관리자 전용)어드민 생성",
+        operation_id          = "(슈퍼관리자 전용)어드민 생성",
         operation_description = "header에 토큰, body에 이메일, 비밀번호 값이 필요합니다, 이메일(abc@def.com 등의 이메일 형식), 패스워드(영문, 숫자, 특수기호) validation이 적용되어 있습니다."
     )
 
@@ -335,7 +336,7 @@ class SuperAdminView(APIView):
                 email    = data['email'],
                 password = hashed_password.decode('utf-8'),
                 role     = 'admin',
-                name = data['username'],
+                name     = data['username'],
             )
 
             return JsonResponse({"message": "SUCCESS"}, status=200)
@@ -355,12 +356,12 @@ class SuperAdminModifyView(APIView):
     @swagger_auto_schema (
         manual_parameters = [parameter_token],
         request_body      = SuperadminPatchSerializer,
-        responses = {
+        responses         = {
             "200": "SUCCESS",
             "400": "BAD_REQUEST",
             "401": "INVALID_TOKEN"
         },
-        operation_id = "(슈퍼관리자 전용)어드민 정보 수정",
+        operation_id          = "(슈퍼관리자 전용)어드민 정보 수정",
         operation_description = "header에 토큰, body에 수정 값이 필요합니다."
     )
     @superadmin_only
@@ -372,7 +373,7 @@ class SuperAdminModifyView(APIView):
         new_email          = data.get('newemail')
         new_password       = data.get('newpassword')
 
-        user.name = new_name if new_name else user.name
+        user.name  = new_name if new_name else user.name
         user.email = new_email if new_email else user.email
 
         if not validate_password(new_password):
@@ -388,17 +389,17 @@ class SuperAdminModifyView(APIView):
     
     @swagger_auto_schema (
         manual_parameters = [parameter_token],
-        responses = {
+        responses         = {
             "200": "SUCCESS",
             "400": "BAD_REQUEST",
             "401": "INVALID_TOKEN"
         },
-        operation_id = "(슈퍼관리자 전용)어드민 삭제",
+        operation_id          = "(슈퍼관리자 전용)어드민 삭제",
         operation_description = "header에 토큰값이 필요합니다."
     )
     @superadmin_only
     def delete(self, request, user_id):
-        user = User.objects.get(id=user_id)
+        user = User.objects.get(id = user_id)
         if not user.role == 'admin':
             return JsonResponse({"message": "INVALID_USER"}, status=400)
         user.delete()

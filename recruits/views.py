@@ -27,11 +27,11 @@ class RecruitListView(APIView):
 
     @swagger_auto_schema(
         query_serializer = RecruitQuerySerializer,
-        responses = {
+        responses        = {
             "200": recruits_get_response,
             "404": "NOT_FOUND"
         },
-        operation_id = "채용공고 목록 조회",
+        operation_id          = "채용공고 목록 조회",
         operation_description = "채용공고 목록을 조회합니다. 포지션별 필터링, 마감일/연봉 기준 정렬\n" +
                                 "position_title: developer, designer, ..\n" +
                                 "sort    : deadline-ascend, salary-descend\n" +
@@ -48,8 +48,8 @@ class RecruitListView(APIView):
         }
 
         recruits = (Recruit.objects.prefetch_related('stacks')
-                                    .filter(position_title__icontains=position_title)
-                                    .order_by(sort_dict[sort], '-created_at')
+                                   .filter(position_title__icontains = position_title)
+                                   .order_by(sort_dict[sort], '-created_at')
                     )
             
         results = [
@@ -64,7 +64,7 @@ class RecruitListView(APIView):
                 "deadline"       : recruit.deadline,
                 "created_at"     : recruit.created_at,
                 "updated_at"     : recruit.updated_at,
-                "stacks"        : [ stack.name for stack in recruit.stacks.all() ]
+                "stacks"         : [ stack.name for stack in recruit.stacks.all() ]
             }
             for recruit in recruits
         ]
@@ -72,13 +72,13 @@ class RecruitListView(APIView):
 
     @swagger_auto_schema (
         manual_parameters = [parameter_token],
-        request_body = RecruitCreateBodySerializer, 
-        responses = {
+        request_body      = RecruitCreateBodySerializer, 
+        responses         = {
             "201": "SUCCESS",
             "400": "BAD_REQUEST",
             "401": "UNAUTHORIZED"
         },
-        operation_id = "채용공고 생성",
+        operation_id          = "채용공고 생성",
         operation_description = "포지션(develop, design, marketing), 설명, 근무타입(정규직/계약직), 경력타입(신입or경력or신입/경력), 모집마감일을 body에 담아 보내주세요."
     )
     @admin_only
@@ -136,7 +136,7 @@ class RecruitView(APIView):
             "200": recruit_get_response,
             "404": "NOT_FOUND"
         },
-        operation_id = "채용공고 상세 조회",
+        operation_id          = "채용공고 상세 조회",
         operation_description = "특정 채용공고 정보를 조회합니다."
     )
     def get(self, request, recruit_id):
@@ -167,14 +167,14 @@ class RecruitView(APIView):
 
     @swagger_auto_schema (
         manual_parameters = [parameter_token],
-        request_body = RecruitCreateBodySerializer, 
-        responses = {
+        request_body      = RecruitCreateBodySerializer, 
+        responses         = {
             "200": "SUCCESS",
             "400": "BAD_REQUEST",
             "401": "UNAUTHORIZED",
             "404": "NOT_FOUND"
         },
-        operation_id = "채용공고 수정",
+        operation_id          = "채용공고 수정",
         operation_description = "포지션, 설명, 기술스택, 근무타입(정규직/계약직), 경력타입(신입or경력or신입/경력), 채용인원, 모집마감일, 최소/최대 연봉을 body에 담아 보내주세요."
     )
     @admin_only
@@ -208,7 +208,7 @@ class RecruitView(APIView):
             stacks_to_add = []
             
             for stack_name in stack_names:
-                s = hashlib.sha3_256()
+                s       = hashlib.sha3_256()
                 s.update(stack_name.encode())
                 hash_id = s.hexdigest()
 
@@ -247,18 +247,18 @@ class RecruitView(APIView):
 
     @swagger_auto_schema(
         manual_parameters = [parameter_token],
-        responses = {
+        responses         = {
             "200": "SUCCESS",
             "401": "UNAUTHORIZED",
             "404": "NOT_FOUND"
         },
-        operation_id = "채용공고 삭제",
+        operation_id          = "채용공고 삭제",
         operation_description = "특정 채용공고를 삭제합니다."
     )
     @admin_only
     def delete(self, request, recruit_id):
         try: 
-            recruit = Recruit.objects.get(id=recruit_id)
+            recruit = Recruit.objects.get(id = recruit_id)
             recruit.delete()
 
             return JsonResponse({"meessage": "SUCCESS"}, status=200)
@@ -279,22 +279,22 @@ class AdmipageDashboardView(APIView):
 
     @swagger_auto_schema(
         manual_parameters = [parameter_token],
-        query_serializer = RecruitQuerySerializer,
-        responses = {
+        query_serializer  = RecruitQuerySerializer,
+        responses         = {
             "200": recruits_get_response,
             "404": "NOT_FOUND"
         },
-        operation_id = "어드민페이지 대시보드",
+        operation_id          = "어드민페이지 대시보드",
         operation_description = "어드민페이지의 각종 정보를 숫자로 표시합니다.\n" +
                                 "오늘의 지원자, 진행중 공고, 새로 등록된 공고, 곧 마감될 공고\n" 
     ) 
     @admin_only
     def get(self, request):
         try:           
-            today_standard = datetime.now()
-            before_day     = today_standard - timedelta(days=1)
-            before_weeks   = today_standard - timedelta(weeks=1) 
-            after_weeks    = today_standard + timedelta(weeks=1)
+            today_standard    = datetime.now()
+            before_day        = today_standard - timedelta(days=1)
+            before_weeks      = today_standard - timedelta(weeks=1) 
+            after_weeks       = today_standard + timedelta(weeks=1)
 
             applicant         = Application.objects.values_list("created_at", flat=True).distinct()
             today_applicant   = [a for a in applicant if a >= before_day]       
@@ -327,12 +327,12 @@ class AdminRecruitListView(APIView):
 
     @swagger_auto_schema(
         manual_parameters = [parameter_token],
-        query_serializer = RecruitQuerySerializer,
-        responses = {
+        query_serializer  = RecruitQuerySerializer,
+        responses         = {
             "200": recruits_get_response,
             "404": "NOT_FOUND"
         },
-        operation_id = "어드민 전용 채용공고 목록 조회",
+        operation_id          = "어드민 전용 채용공고 목록 조회",
         operation_description = "채용공고 목록을 조회합니다. 직무별, 최신순으로 공고 정렬, 공고별 지원자수 \n" +
                                 "position_title: developer, designer, ..\n" +
                                 "sort    : deadline-ascend, salary-descend\n" +
@@ -342,12 +342,12 @@ class AdminRecruitListView(APIView):
     def get(self, request):
         position_title = request.GET.get("position_title", "")
         sort           = request.GET.get("sort", "created-descend")
-        sort_dict = {
+        sort_dict      = {
             "created-descend" : "-created_at",
         }
 
         recruits = (Recruit.objects.filter(position_title__icontains=position_title)
-                                    .order_by(sort_dict[sort], '-created_at')
+                                   .order_by(sort_dict[sort], '-created_at')
                     )
 
         results = [
@@ -379,12 +379,12 @@ class AdminPageRecruitView(APIView):
 
     @swagger_auto_schema(
         manual_parameters = [parameter_token],
-        query_serializer = RecruitQuerySerializer,
-        responses = {
+        query_serializer  = RecruitQuerySerializer,
+        responses         = {
             "200": recruits_get_response,
             "404": "NOT_FOUND"
         },
-        operation_id = "어드민페이지 채용공고 목록 조회",
+        operation_id          = "어드민페이지 채용공고 목록 조회",
         operation_description = "채용공고 목록을 조회합니다. 최신순으로 공고 정렬, 공고별 지원자 수\n" +
                                 "sort    : deadline-ascend, salary-descend\n" +
                                 "DEFAULT : 모든 포지션, 최신순"
@@ -393,11 +393,11 @@ class AdminPageRecruitView(APIView):
     def get(self, request):
         sort           = request.GET.get("sort", "created-descend")
 
-        sort_dict = {
+        sort_dict      = {
             "created-descend" : "-created_at",
         }
         recruits = Recruit.objects.order_by(sort_dict[sort], '-created_at')
-        results = [
+        results  = [
             {
                 "id"                  : recruit.id,
                 "position"            : recruit.position,
@@ -412,7 +412,7 @@ class AdminPageRecruitView(APIView):
         ]
         return JsonResponse({"results": results}, status=200)
 
-class RecruitListAdminView(APIView):
+class RecruitListInquireView(APIView):
     parameter_token = openapi.Parameter (
                                         "Authorization", 
                                         openapi.IN_HEADER, 
@@ -424,12 +424,12 @@ class RecruitListAdminView(APIView):
 
     @swagger_auto_schema(
         manual_parameters = [parameter_token],
-        query_serializer = RecruitQuerySerializer,
-        responses = {
+        query_serializer  = RecruitQuerySerializer,
+        responses         = {
             "200": recruits_get_response,
             "404": "NOT_FOUND"
         },
-        operation_id = "(관리자 전용) 내가 작성한 채용공고 목록 조회",
+        operation_id          = "(관리자 전용) 내가 작성한 채용공고 목록 조회",
         operation_description = "내가 작성한 채용공고 목록을 조회합니다.\n" +
                                 "position_title: developer, designer, marketer\n" +
                                 "DEFAULT : 최신순 정렬"
@@ -437,9 +437,9 @@ class RecruitListAdminView(APIView):
     @admin_only
     def get(self, request):
         position_title = request.GET.get("position_title", "")
-        recruits = (Recruit.objects.prefetch_related('stacks')
-                                    .filter(position_title__icontains=position_title, author=request.user.email)
-                                    .order_by('-created_at')
+        recruits       = (Recruit.objects.prefetch_related('stacks')
+                                         .filter(position_title__icontains=position_title, author=request.user.email)
+                                         .order_by('-created_at')
                     )
 
         results = [
