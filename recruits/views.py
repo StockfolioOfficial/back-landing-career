@@ -157,7 +157,8 @@ class RecruitView(APIView):
                 "deadline"       : recruit.deadline,
                 "created_at"     : recruit.created_at,
                 "updated_at"     : recruit.updated_at,
-                "stacks"         : [ stack.name for stack in recruit.stacks.all() ]
+                "stacks"         : [ stack.name for stack in recruit.stacks.all() ],
+                "num_applicants" : Application.objects.filter(recruits=Recruit.objects.get(id=recruit.id)).count(),
             }
 
             return JsonResponse({"result": result}, status=200)
