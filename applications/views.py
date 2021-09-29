@@ -49,8 +49,12 @@ class CloudStorage:
 
     def delete_file(self, application_id):
         file_key = Attachment.objects.get(application_id=application_id).file_url
-        bucket = self.resource.Bucket(name=BUCKET_NAME)
-        bucket.Object(file_key).delete()
+        # bucket = self.resource.Bucket(name=BUCKET_NAME)
+        # bucket.Object(file_key).delete()
+        self.client.delete_object(
+            Bucket=BUCKET_NAME,
+            Key= file_key
+        )
 
     def generate_presigned_url(self, application_id):
         if Attachment.objects.get(application_id=application_id).file_url:
@@ -318,14 +322,8 @@ class ApplicationAdminDetailView(APIView):
     def get(self, request, application_id):
         cloud_storage = CloudStorage()
         application = Application.objects.get(id=application_id)
-        
-        content = application.content
-        content["portfolio"]["portfolioUrl"] = cloud_storage.generate_presigned_url(application.id)
 
-        attachment  = Attachment.objects.get(application=application)
-        
-        content = application.content
-        content["portfolio"]["portfolioUrl"] = attachment.file_url
+        download_url = cloud_storage.generate_presigned_url(application.id)
         
         results = {   
                 'id'            : application_id,
@@ -335,6 +333,7 @@ class ApplicationAdminDetailView(APIView):
                 'updated_at'    : application.updated_at,
                 'user_id'       : application.user.id,
                 'user_email'    : application.user.email,
+                'download_url'  : download_url,
                 'recruit_id'    : Recruit.objects.get(applications=application).id,
                 'job_openings'  : Recruit.objects.get(applications=application).job_openings,
                 'author'        : Recruit.objects.get(applications=application).author,
