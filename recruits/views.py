@@ -307,7 +307,7 @@ class AdminRecruitListView(APIView):
                 "career_type"         : recruit.get_career_type_display(),
                 "job_openings"        : recruit.job_openings,
                 "deadline"            : recruit.deadline,
-                "recruit_application" : Application.objects.filter(recruits=Recruit.objects.get(id=recruit.id)).count()
+                "applicants_num" : Application.objects.filter(recruits=Recruit.objects.get(id=recruit.id)).count()
             }
             for recruit in recruits
         ]
@@ -400,7 +400,7 @@ class AdminPageRecruitListView(APIView):
                 "career_type"         : recruit.get_career_type_display(),
                 "job_openings"        : recruit.job_openings,
                 "deadline"            : recruit.deadline,
-                "recruit_application" : Application.objects.filter(recruits=Recruit.objects.get(id=recruit.id)).count()
+                "applicants_num" : Application.objects.filter(recruits=Recruit.objects.get(id=recruit.id)).count()
             }
             for recruit in recruits
         ]
