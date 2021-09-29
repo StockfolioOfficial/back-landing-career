@@ -50,16 +50,17 @@ class CloudStorage:
     def delete_file(self, application_id):
         file_key = Attachment.objects.get(application_id=application_id).file_url
         bucket = self.resource.Bucket(name=BUCKET_NAME)
-        bucket.Object(file_key[1:]).delete()
+        bucket.Object(file_key).delete()
 
     def generate_presigned_url(self, application_id):
-        file_key = Attachment.objects.get(application_id=application_id).file_url
-        url = self.client.generate_presigned_url(
-                ClientMethod='get_object', 
-                Params={'Bucket': self.BUCKET_NAME, 
-                        'Key': file_key},
-                ExpiresIn=3600)
-        return url
+        if Attachment.objects.get(application_id=application_id).file_url:
+            file_key = Attachment.objects.get(application_id=application_id).file_url
+            url = self.client.generate_presigned_url(
+                    ClientMethod='get_object', 
+                    Params={'Bucket': self.BUCKET_NAME, 
+                            'Key': file_key},
+                    ExpiresIn=3600)
+            return url
 
 class ApplicationView(APIView):
     parameter_token = openapi.Parameter (
@@ -97,9 +98,9 @@ class ApplicationView(APIView):
             application = recruit.applications.get(user=user)
             
             content = application.content
-            content["portfolio"]["portfolioUrl"] = cloud_storage.generate_presigned_url(application.id)
+            download_url = cloud_storage.generate_presigned_url(application.id)
 
-            result = {"content": content}
+            result = {"content": content, "download_url": download_url}
 
             return JsonResponse({"result": result}, status=200)
 
@@ -136,26 +137,22 @@ class ApplicationView(APIView):
             if recruit.applications.filter(user=user).exists():
                 return JsonResponse({"message": "ALREADY_EXISTS"}, status=400)
 
-            if not file:
-                file_url = content["portfolio"]["portfolioUrl"]
-                
-            if file:
-                file_url = cloud_storage.upload_file(file["portfolio"])
-
             application = Application.objects.create(
                 content = content,
                 status  = status,
                 user    = user,
             )
             application.recruits.add(recruit)
-            
-            if '' == (application.content['career'][0]['leavingDate'] and application.content['career'][0]['joinDate']) and application.content['basicInfo']['phoneNumber']:
-                return JsonResponse ({"message":"DATA_NOT_FOUND"}, status=404)    
 
-            Attachment.objects.create(
-                file_url    = file_url,
-                application = application
-            )
+            if '' == (application.content['career'][0]['leavingDate'] and application.content['career'][0]['joinDate']) and application.content['basicInfo']['phoneNumber']:
+                return JsonResponse ({"message":"DATA_NOT_FOUND"}, status=404)  
+
+            if file:
+                file_url = cloud_storage.upload_file(file["portfolio"])
+                Attachment.objects.create(
+                    file_url   = file_url,
+                    application = application
+                )
 
             return JsonResponse({"message": "SUCCESS"}, status=201)
 
@@ -190,19 +187,14 @@ class ApplicationView(APIView):
             application = Recruit.objects.get(id=recruit_id).applications.get(user=user)
             application.content = content
             application.save()
-
-            attachment = Attachment.objects.get(application=application)
             
             if file:
                 cloud_storage.delete_file(application.id)
-                attachment.delete()
                 file_url = cloud_storage.upload_file(file["portfolio"])
-            else:
-                file_url = content["portfolio"]["portfolioUrl"]
+                Attachment.objects.filter(application=application).update(
+                    file_url   = file_url,
+                )
             
-            attachment.file_url = file_url
-            attachment.save()
-                
             return JsonResponse({"message": "SUCCESS"}, status=200)
 
         except Recruit.DoesNotExist:
