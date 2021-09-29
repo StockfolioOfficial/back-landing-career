@@ -455,3 +455,48 @@ class RecruitListAdminView(APIView):
             for recruit in recruits
         ]
         return JsonResponse({"results": results}, status=200)
+    
+class AdminRecruitDetailView(APIView):
+    parameter_token = openapi.Parameter (
+                                        "Authorization", 
+                                        openapi.IN_HEADER, 
+                                        description = "access_token", 
+                                        type        = openapi.TYPE_STRING,
+                                        default     = ADMIN_TOKEN
+    )
+
+    recruit_get_response = openapi.Response("result", RecruitSerializer)
+
+    @swagger_auto_schema(
+        responses = {
+            "200": recruit_get_response,
+            "404": "NOT_FOUND"
+        },
+        operation_id = "(관리자 전용) 채용공고 상세 조회",
+        operation_description = "특정 채용공고 정보를 조회합니다."
+    )
+    def get(self, request, recruit_id):
+        try:
+            recruit = Recruit.objects.prefetch_related('stacks').get(id=recruit_id)
+
+            result = {
+                "id"                     : recruit.id,
+                "position"               : recruit.position,
+                "position_title"         : recruit.position_title,
+                "work_type"              : recruit.work_type,
+                "career_type"            : recruit.get_career_type_display(),
+                "author"                 : recruit.author,
+                "job_openings"           : recruit.job_openings,
+                "description"            : recruit.description,
+                "minimum_salary"         : recruit.minimum_salary,
+                "maximum_salary"         : recruit.maximum_salary,
+                "deadline"               : recruit.deadline,
+                "created_at"             : recruit.created_at,
+                "updated_at"             : recruit.updated_at,
+                "stacks"                 : [ stack.name for stack in recruit.stacks.all() ],
+                "applicants_num"         : Application.objects.filter(recruits=Recruit.objects.get(id=recruit.id)).count()
+            }
+            return JsonResponse({"result": result}, status=200)
+
+        except Recruit.DoesNotExist:
+            return JsonResponse({"message": "RECRUIT_NOT_FOUND"}, status=404)

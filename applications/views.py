@@ -1,6 +1,4 @@
-import boto3
-import json
-import uuid, datetime
+import boto3, json, uuid, datetime
 
 from datetime             import date, datetime, timedelta
 from django.db.models     import Q
@@ -324,42 +322,45 @@ class ApplicationAdminDetailView(APIView):
     
     @admin_only
     def get(self, request, application_id):
-        cloud_storage = CloudStorage()
-        application = Application.objects.get(id=application_id)
-        
-        content = application.content
-        content["portfolio"]["portfolioUrl"] = cloud_storage.generate_presigned_url(application.id)
+        try:
+            cloud_storage = CloudStorage()
+            application = Application.objects.get(id=application_id)
+            
+            content = application.content
+            content["portfolio"]["portfolioUrl"] = cloud_storage.generate_presigned_url(application.id)
 
-        attachment  = Attachment.objects.get(application=application)
-        
-        content = application.content
-        content["portfolio"]["portfolioUrl"] = attachment.file_url
-        
-        results = {   
-                'id'            : application_id,
-                'content'       : application.content,
-                'status'        : application.status,
-                'created_at'    : application.created_at,
-                'updated_at'    : application.updated_at,
-                'user_id'       : application.user.id,
-                'user_email'    : application.user.email,
-                'recruit_id'    : Recruit.objects.get(applications=application).id,
-                'job_openings'  : Recruit.objects.get(applications=application).job_openings,
-                'author'        : Recruit.objects.get(applications=application).author,
-                'work_type'     : Recruit.objects.get(applications=application).work_type,
-                'career_type'   : Recruit.objects.get(applications=application).get_career_type_display(),
-                'position_title': Recruit.objects.get(applications=application).position_title,
-                'position'      : Recruit.objects.get(applications=application).position,
-                'deadline'      : Recruit.objects.get(applications=application).deadline
-            }
+            attachment  = Attachment.objects.get(application=application)
+            
+            content = application.content
+            content["portfolio"]["portfolioUrl"] = attachment.file_url
+            
+            results = {   
+                    'id'            : application_id,
+                    'content'       : application.content,
+                    'status'        : application.status,
+                    'created_at'    : application.created_at,
+                    'updated_at'    : application.updated_at,
+                    'user_id'       : application.user.id,
+                    'user_email'    : application.user.email,
+                    'recruit_id'    : Recruit.objects.get(applications=application).id,
+                    'job_openings'  : Recruit.objects.get(applications=application).job_openings,
+                    'author'        : Recruit.objects.get(applications=application).author,
+                    'work_type'     : Recruit.objects.get(applications=application).work_type,
+                    'career_type'   : Recruit.objects.get(applications=application).get_career_type_display(),
+                    'position_title': Recruit.objects.get(applications=application).position_title,
+                    'position'      : Recruit.objects.get(applications=application).position,
+                    'deadline'      : Recruit.objects.get(applications=application).deadline
+                }
 
-        ApplicationAccessLog.objects.create(   
-                user_id        = request.user.id,
-                application_id = application_id,
-            )
+            ApplicationAccessLog.objects.create(   
+                    user_id        = request.user.id,
+                    application_id = application_id,
+                )
+            return JsonResponse({'results': results}, status=200)
 
-        return JsonResponse({'results': results}, status=200)
-    
+        except Application.DoesNotExist:
+            return JsonResponse({'message': 'APPLICATION_NOT_FOUND'}, status=404)
+
     @swagger_auto_schema (
         manual_parameters = [parameter_token],
         request_body = ApplicationAdminPatchSerializer,
@@ -386,8 +387,6 @@ class ApplicationAdminDetailView(APIView):
         except Application.DoesNotExist:
             return JsonResponse({'message': 'APPLICATION_NOT_FOUND'}, status=404)
 
-
-
 class CommentAdminView(APIView):
     parameter_token = openapi.Parameter (
                                         "Authorization", 
@@ -411,20 +410,26 @@ class CommentAdminView(APIView):
 
     @admin_only
     def get(self, request, application_id):
-        application = Application.objects.get(id=application_id)
-        
-        results = {  
-            'comments' : [{
-                    'id'         : comment.id,
-                    'admin_id'   : comment.user_id,
-                    'admin_name' : User.objects.get(id=comment.user_id).name if User.objects.get(id=comment.user_id).name else User.objects.get(id=comment.user_id).email.split('@')[0],
-                    'created_at' : comment.created_at,
-                    'updated_at' : comment.updated_at,
-                    'description': comment.description,
-                    'score'      : comment.score  
-            } for comment in Comment.objects.filter(application=application)]
-        }
-        return JsonResponse({'results': results}, status=200)
+        try:
+            application = Application.objects.get(id=application_id)
+            
+            results = {  
+                'comments' : [{
+                        'id'         : comment.id,
+                        'admin_id'   : comment.user_id,
+                        'admin_name' : User.objects.get(id=comment.user_id).name if User.objects.get(id=comment.user_id).name else User.objects.get(id=comment.user_id).email.split('@')[0],
+                        'created_at' : comment.created_at,
+                        'updated_at' : comment.updated_at,
+                        'description': comment.description,
+                        'score'      : comment.score  
+                } for comment in Comment.objects.filter(application=application)]
+            }
+            return JsonResponse({'results': results}, status=200)
+
+        except Application.DoesNotExist:
+            return JsonResponse({'message': 'APPLICATION_NOT_FOUND'}, status=404)
+        except Comment.DoesNotExist:
+            return JsonResponse({'message': 'COMMENT_NOT_FOUND'}, status=404)
     
     @swagger_auto_schema (
         manual_parameters = [parameter_token],
@@ -527,7 +532,6 @@ class ApplicatorAdminView(APIView):
                                         type        = openapi.TYPE_STRING,
                                         default     = ADMIN_TOKEN
     )
-   
     application_admin_response = openapi.Response("result", ApplicationAdminSerializer)
 
     @swagger_auto_schema (
