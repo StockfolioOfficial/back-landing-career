@@ -20,9 +20,9 @@ urlpatterns = [
 schema_view = get_schema_view(
     openapi.Info(
         title            = "Stockers API",
-        default_version  = "v1",
+        default_version  = "v2",
         description      = "Stockers API 문서",
-        license          = openapi.License(name="김예랑, 최명준"),
+        license          = openapi.License(name="김예랑, 최명준, 고유영, 김도담"),
     ),
     public             = True,
     permission_classes = (permissions.AllowAny,),
