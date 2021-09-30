@@ -136,6 +136,10 @@ class ApplicationView(APIView):
             status  = "ST1"
             file    = request.FILES
 
+            User.objects.filter(id=request.user.id).update(
+                name = content['basicInfo']['userName']
+            )
+
             if recruit.applications.filter(user=user).exists():
                 return JsonResponse({"message": "ALREADY_EXISTS"}, status=400)
 
