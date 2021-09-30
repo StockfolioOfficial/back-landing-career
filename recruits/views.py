@@ -98,8 +98,6 @@ class RecruitListView(APIView):
             career_type    = data["career_type"] if data["career_type"] else "신입/경력"
             deadline       = data["deadline"]
 
-            author = request.user.name if request.user.name else request.user.email.split('@')[0]
-
             if not (career_type in career_type_choices):
                 return JsonResponse({"message": "INVALID_CAREER_TYPE"}, status=400)
 
@@ -109,7 +107,7 @@ class RecruitListView(APIView):
                 description    = description,
                 work_type      = work_type,
                 career_type    = career_type_choices[career_type],
-                author         = author,
+                author         = request.user.id,
                 deadline       = deadline if deadline else "9999-12-31"
             )
 
@@ -149,7 +147,7 @@ class RecruitView(APIView):
                 "position_title" : recruit.position_title,
                 "work_type"      : recruit.work_type,
                 "career_type"    : recruit.get_career_type_display(),
-                "author"         : recruit.author,
+                "author"         : User.objects.get(id=recruit.author).name if User.objects.get(id=recruit.author).name else User.objects.get(id=recruit.author).email,
                 "job_openings"   : recruit.job_openings,
                 "description"    : recruit.description,
                 "minimum_salary" : recruit.minimum_salary,
@@ -201,8 +199,6 @@ class RecruitView(APIView):
             minimum_salary = data["minimum_salary"]
             maximum_salary = data["maximum_salary"]
 
-            author = request.user.email
-
             if not (career_type in career_type_choices):
                 return JsonResponse({"message": "INVALID_CAREER_TYPE"}, status=400)
 
@@ -222,7 +218,7 @@ class RecruitView(APIView):
             recruit.work_type      = work_type
             recruit.career_type    = career_type_choices[career_type]
             recruit.job_openings   = job_openings
-            recruit.author         = author
+            recruit.author         = request.user.id
             recruit.deadline       = deadline if deadline else "9999-12-31"
             recruit.minimum_salary = minimum_salary if minimum_salary else 0
             recruit.maximum_salary = maximum_salary if maximum_salary else 0
@@ -311,7 +307,7 @@ class AdminRecruitListView(APIView):
                 "career_type"         : recruit.get_career_type_display(),
                 "job_openings"        : recruit.job_openings,
                 "deadline"            : recruit.deadline,
-                "recruit_application" : Application.objects.filter(recruits=Recruit.objects.get(id=recruit.id)).count()
+                "applicants_num" : Application.objects.filter(recruits=Recruit.objects.get(id=recruit.id)).count()
             }
             for recruit in recruits
         ]
@@ -404,7 +400,7 @@ class AdminPageRecruitListView(APIView):
                 "career_type"         : recruit.get_career_type_display(),
                 "job_openings"        : recruit.job_openings,
                 "deadline"            : recruit.deadline,
-                "recruit_application" : Application.objects.filter(recruits=Recruit.objects.get(id=recruit.id)).count()
+                "applicants_num" : Application.objects.filter(recruits=Recruit.objects.get(id=recruit.id)).count()
             }
             for recruit in recruits
         ]
@@ -436,7 +432,7 @@ class MyRecruitListView(APIView):
     def get(self, request):
         position_title = request.GET.get("position_title", "")
         recruits       = (Recruit.objects.prefetch_related('stacks')
-                                         .filter(position_title__icontains=position_title, author=request.user.email)
+                                         .filter(position_title__icontains=position_title, author=request.user.id)
                                          .order_by('-created_at')
                     )
 
@@ -483,7 +479,7 @@ class AdminRecruitDetailView(APIView):
                 "position_title"         : recruit.position_title,
                 "work_type"              : recruit.work_type,
                 "career_type"            : recruit.get_career_type_display(),
-                "author"                 : recruit.author,
+                "author"                 : User.objects.get(id=recruit.author).name if User.objects.get(id=recruit.author).name else User.objects.get(id=recruit.author).email,
                 "job_openings"           : recruit.job_openings,
                 "description"            : recruit.description,
                 "minimum_salary"         : recruit.minimum_salary,
