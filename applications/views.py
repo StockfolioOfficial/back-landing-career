@@ -87,7 +87,7 @@ class ApplicationView(APIView):
             "404": "NOT_FOUND",
             "401": "UNAUTHORIZED"
         },
-        operation_id          = "(관리자 전용) 해당 공고에 대한 지원서 조회",
+        operation_id          = "해당 공고에 대한 지원서 조회",
         operation_description = "header에 토큰이 필요합니다."
     )
 
@@ -120,7 +120,7 @@ class ApplicationView(APIView):
             "401": "UNAUTHORIZED",
             "400": "BAD_REQUEST"
         },
-        operation_id          = "(관리자 전용) 해당 공고에 대한 지원서 생성",
+        operation_id          = " 해당 공고에 대한 지원서 생성",
         operation_description = "header에 토큰이 필요합니다.\n"+
                                 "formData에 json형식의 데이터가 필요합니다.\n"+
                                 "formData에 파일을 첨부할 수 있습니다."
@@ -172,7 +172,7 @@ class ApplicationView(APIView):
             "401": "UNAUTHORIZED",
             "400": "BAD_REQUEST"
         },
-        operation_id          = "(관리자 전용) 해당 공고에 대한 지원서 수정",
+        operation_id          = "해당 공고에 대한 지원서 수정",
         operation_description = "header에 토큰이 필요합니다.\n"+
                                 "formData에 json형식의 수정 데이터가 필요합니다.\n"+
                                 "formData에 파일을 첨부할 수 있습니다."
@@ -213,7 +213,7 @@ class ApplicationView(APIView):
             "404": "NOT_FOUND",
             "401": "UNAUTHORIZED",
         },
-        operation_id = "(관리자 전용) 해당 공고에 대한 지원서 삭제",
+        operation_id = "해당 공고에 대한 지원서 삭제",
         operation_description = "header에 토큰이 필요합니다"
     )
     
