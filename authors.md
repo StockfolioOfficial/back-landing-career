@@ -31,7 +31,7 @@ Swagger api 작성
 ##스톡폴리오 채용관리 1.1 authors  
 ###1.1 어드민 관련 기능 구현 (어드민 페이지, 슈퍼 어드민, 지원자 평가)  
 
-@김도담(PM)
+@김도담(PM)  
 (관리자) AdminPageNumberView : 어드민 페이지 대시보드 : 채용 관련 정보 도식화  
 (관리자) AdminPageRecruitListView : 어드민 페이지 내부 채용 공고  
 (관리자) AdminRecruitListView : 어드민 전용 채용 공고 조회  
@@ -43,7 +43,7 @@ Swagger api 작성
 Swagger api 작성  
 Authors.md 작성  
 
-@고유영
+@고유영  
 (슈퍼관리자) SuperAdminView, SuperAdminModifyView : 슈퍼어드민의 어드민 계정관리 CRUD  
 (관리자) AdminCommentView: 지원서 평가용 코멘트(점수) CRUD  
 (관리자) AdminApplicationDetailView: 지원서 세부사항 뷰(AWS s3 파일 CRUD, 조회용 임시 url 생성)   
