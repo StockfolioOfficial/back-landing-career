@@ -10,6 +10,7 @@ from drf_yasg             import openapi
 
 from global_variable      import ADMIN_TOKEN
 from core.decorators      import admin_only
+from users.models         import User
 from recruits.models      import Recruit, Stack, RecruitStack
 from applications.models  import Application
 from recruits.serializers import RecruitSerializer, RecruitQuerySerializer, RecruitCreateBodySerializer
